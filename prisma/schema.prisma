@@ -1,0 +1,161 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Card {
+  id                    String    @id @map("_id")
+  name                  String
+  supertype             String
+  subtypes              String[]
+  hp                    String?
+  types                 String[]
+  setId                 String    // FK to Set
+  setName               String
+  number                String
+  artist                String?
+  rarity                String
+  nationalPokedexNumbers Int[]
+  images                Json      // Storing images URLs as JSON
+  tcgplayer            Json?      // Keeping TCG Player data for price information
+  lastUpdated           DateTime  @default(now())
+  
+  // Relationships
+  set                   Set       @relation(fields: [setId], references: [id])
+  userCards             UserCard[]
+  wishlistItems         WishlistItem[]
+  priceHistory          PriceHistory[]
+
+  @@index([name], name: "card_name_idx")
+  @@index([setId], name: "card_setId_idx")
+  @@index([types], name: "card_types_idx")
+  @@index([rarity], name: "card_rarity_idx")
+  @@index([nationalPokedexNumbers], name: "card_pokedex_idx")
+}
+
+model PriceHistory {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  cardId        String
+  date          DateTime
+  normal        Float?
+  holofoil      Float?
+  reverseHolofoil Float?
+  firstEdition  Float?
+  
+  // Relationship
+  card          Card      @relation(fields: [cardId], references: [id])
+
+  // Just use the unique constraint, which will create an index too
+  @@unique([cardId, date], name: "price_cardId_date_unique")
+}
+
+model Set {
+  id            String    @id @map("_id")
+  name          String
+  series        String
+  printedTotal  Int
+  total         Int
+  legalities    Json?     // Optional for collectors who care about format legality
+  ptcgoCode     String?
+  releaseDate   String
+  updatedAt     String
+  images        Json      // Storing image URLs as JSON
+  lastUpdated   DateTime  @default(now())
+  
+  // Relationships
+  cards         Card[]
+
+  @@index([name], name: "set_name_idx")
+  @@index([series], name: "set_series_idx")
+  @@index([releaseDate], name: "set_releaseDate_idx")
+}
+
+// User models remain the same
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId       String    @unique
+  email         String    @unique
+  name          String?
+  imageUrl      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relationships
+  collection    UserCollection?
+  wishlist      Wishlist?
+}
+
+model UserCollection {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @unique @db.ObjectId
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Statistics
+  totalCards    Int       @default(0)
+  uniqueCards   Int       @default(0)
+  estimatedValue Float    @default(0)
+  
+  // Relationships
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards         UserCard[]
+}
+
+model UserCard {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  collectionId  String    @db.ObjectId
+  cardId        String
+  quantity      Int       @default(1)
+  condition     String    @default("Near Mint")
+  isFoil        Boolean   @default(false)
+  isFirstEdition Boolean  @default(false)
+  purchaseDate  DateTime?
+  purchasePrice Float?
+  notes         String?
+  forTrade      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relationships
+  collection    UserCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  card          Card      @relation(fields: [cardId], references: [id])
+
+  @@unique([collectionId, cardId], name: "userCard_collection_card_unique")
+  @@index([cardId], name: "userCard_cardId_idx")
+}
+
+model Wishlist {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @unique @db.ObjectId
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relationships
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         WishlistItem[]
+}
+
+model WishlistItem {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  wishlistId    String    @db.ObjectId
+  cardId        String
+  maxPrice      Float?
+  desiredCondition String @default("Any")
+  priority      Int       @default(3)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relationships
+  wishlist      Wishlist  @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  card          Card      @relation(fields: [cardId], references: [id])
+
+  @@unique([wishlistId, cardId], name: "wishlistItem_wishlist_card_unique")
+  @@index([cardId], name: "wishlistItem_cardId_idx")
+}
