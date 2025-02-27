@@ -6,11 +6,43 @@ import Image from "next/image";
 import { formatPrice } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronRight, Plus, Search, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronRight, Plus, Search } from "lucide-react";
+
+// Updated type definitions to match the data shape returned by Prisma
+
+interface CardImages {
+  small?: string;
+  [key: string]: unknown;
+}
+
+interface CardType {
+  id: string;
+  name: string;
+  number: string;
+  supertype: string;
+  subtypes: string[];
+  hp: string | null;
+  types: string[];
+  setId: string;
+  setName: string;
+  artist: string | null;
+  rarity: string;
+  nationalPokedexNumbers: number[];
+  images?: CardImages | null; // allow null value
+  tcgplayer: unknown;
+  lastUpdated: Date;
+}
+
+interface UserCardType {
+  id: string;
+  quantity: number;
+  condition: string;
+  card: CardType;
+}
 
 // This page is protected by Clerk middleware
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 async function getUserCollection() {
   const { userId } = await auth();
@@ -63,7 +95,7 @@ async function getUserCollection() {
         collectionId: user.collection.id 
       },
       orderBy: { 
-        updatedAt: 'desc' 
+        updatedAt: "desc" 
       },
       take: 10,
       include: {
@@ -113,7 +145,9 @@ export default async function CollectionPage() {
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Collection Not Found</h1>
-          <p className="text-muted-foreground mb-4">We couldn't find your collection. Please try again later.</p>
+          <p className="text-muted-foreground mb-4">
+            We couldn&apos;t find your collection. Please try again later.
+          </p>
           <Button asChild>
             <Link href="/">Go Home</Link>
           </Button>
@@ -174,7 +208,7 @@ export default async function CollectionPage() {
           {recentCards.length > 0 ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {recentCards.map((userCard) => (
+                {(recentCards as UserCardType[]).map((userCard) => (
                   <CollectionCardItem 
                     key={userCard.id} 
                     userCard={userCard} 
@@ -200,7 +234,7 @@ export default async function CollectionPage() {
           <div className="text-center py-12 border rounded-lg bg-card">
             <h3 className="text-xl font-medium mb-2">Set view coming soon</h3>
             <p className="text-muted-foreground mb-6">
-              We're working on a way to view your collection organized by sets.
+              We&apos;re working on a way to view your collection organized by sets.
             </p>
           </div>
         </TabsContent>
@@ -209,17 +243,12 @@ export default async function CollectionPage() {
   );
 }
 
-function CollectionCardItem({ userCard }: { userCard: any }) {
+function CollectionCardItem({ userCard }: { userCard: UserCardType }) {
   const { card, quantity, condition } = userCard;
   
-  // Extract image URLs from the JsonValue
-  const images = card.images && typeof card.images === 'object' && card.images !== null 
-    ? card.images 
-    : {};
-    
-  const smallImage = 'small' in images && typeof images.small === 'string' 
-    ? images.small 
-    : null;
+  // Extract image URLs from the card images object
+  const images = card.images && typeof card.images === "object" ? card.images : {};
+  const smallImage = "small" in images && typeof images.small === "string" ? images.small : null;
   
   return (
     <Link href={`/card/${card.id}`}>

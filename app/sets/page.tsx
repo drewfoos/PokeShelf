@@ -102,7 +102,7 @@ function formatReleaseDate(dateString: string): string {
       month: 'short',
       day: 'numeric'
     });
-  } catch (error) {
+  } catch (_error) {
     return dateString;
   }
 }

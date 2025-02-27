@@ -26,6 +26,12 @@ interface CardGridProps {
   isLoading?: boolean;
 }
 
+// Define a type for placeholders
+interface Placeholder {
+  id: string;
+  isPlaceholder: boolean;
+}
+
 const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
   if (isLoading) {
     return (
@@ -58,16 +64,17 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
     xl: 6      // xl:grid-cols-6
   };
 
-  // Use the largest card-per-row value to calculate needed placeholders
+  // Use the largest cards-per-row value to calculate needed placeholders
   const maxCardsPerRow = cardsPerRow.xl;
   const remainder = cards.length % maxCardsPerRow;
   
   // Create placeholders array if needed
-  const placeholders = remainder === 0 ? [] : 
-    Array.from({ length: maxCardsPerRow - remainder }).map((_, i) => ({ 
-      id: `placeholder-${i}`, 
-      isPlaceholder: true 
-    }));
+  const placeholders: Placeholder[] = remainder === 0 
+    ? [] 
+    : Array.from({ length: maxCardsPerRow - remainder }).map((_, i) => ({ 
+        id: `placeholder-${i}`, 
+        isPlaceholder: true 
+      }));
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -76,7 +83,7 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
       ))}
       
       {/* Invisible placeholders to maintain grid alignment */}
-      {placeholders.map((placeholder: any) => (
+      {placeholders.map((placeholder: Placeholder) => (
         <div key={placeholder.id} className="invisible" aria-hidden="true">
           {/* Placeholder to maintain grid layout */}
         </div>

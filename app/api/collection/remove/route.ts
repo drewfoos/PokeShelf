@@ -30,13 +30,15 @@ export async function POST(request: NextRequest) {
     // If user doesn't exist in our database, create them
     if (!dbUser) {
       // Extract user info from Clerk
-      const primaryEmail = user.emailAddresses && user.emailAddresses.length > 0 
-        ? user.emailAddresses[0].emailAddress 
-        : '';
+      const primaryEmail =
+        user.emailAddresses && user.emailAddresses.length > 0
+          ? user.emailAddresses[0].emailAddress
+          : "";
       
-      const name = user.firstName && user.lastName 
-        ? `${user.firstName} ${user.lastName}`.trim() 
-        : user.username || 'User';
+      const name =
+        user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`.trim()
+          : user.username || "User";
       
       // Create the user in our database
       dbUser = await prisma.user.create({
@@ -68,7 +70,8 @@ export async function POST(request: NextRequest) {
    
     // Check if user has a collection
     if (!dbUser.collection) {
-      const newCollection = await prisma.userCollection.create({
+      // Create the collection if it doesn't exist
+      await prisma.userCollection.create({
         data: {
           user: { connect: { id: dbUser.id } },
           totalCards: 0,

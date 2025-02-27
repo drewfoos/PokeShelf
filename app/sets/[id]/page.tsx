@@ -7,15 +7,10 @@ import prisma from '@/lib/prisma';
 import CardGrid from '@/components/cards/cards-grid';
 import { Button } from '@/components/ui/button';
 import { FilterControls } from './filter-controls';
+import { Prisma } from '@prisma/client';
 
 // Make this page dynamic to get fresh data
 export const dynamic = 'force-dynamic';
-
-interface SearchParams {
-  page?: string;
-  rarity?: string;
-  type?: string;
-}
 
 async function getSet(id: string) {
   try {
@@ -34,13 +29,17 @@ async function getSet(id: string) {
   }
 }
 
-async function getSetCards(setId: string, page = 1, filters: { rarity?: string, type?: string } = {}) {
+async function getSetCards(
+  setId: string,
+  page = 1,
+  filters: { rarity?: string; type?: string } = {}
+) {
   try {
     const pageSize = 20; // Number of cards per page
     const skip = (page - 1) * pageSize;
     
-    // Build filter object
-    const filter: any = { setId };
+    // Build filter object using Prisma's CardWhereInput type
+    const filter: Prisma.CardWhereInput = { setId };
     
     if (filters.rarity && filters.rarity !== "all") {
       filter.rarity = filters.rarity;
@@ -121,44 +120,56 @@ async function getSetCards(setId: string, page = 1, filters: { rarity?: string, 
 }
 
 export default async function SetDetailPage({
-    params,
-    searchParams,
-  }: {
-    params: any;
-    searchParams: any;
-  }) {
-    // Await the parameters to resolve them
-    const resolvedParams = await params;
-    const resolvedSearchParams = await searchParams;
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { page?: string; rarity?: string; type?: string };
+}) {
+  // Await the parameters (they're plain objects)
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   
-    // Now access the properties directly (they’re plain objects)
-    const pageParam = resolvedSearchParams.page;
-    const rarityParam = resolvedSearchParams.rarity;
-    const typeParam = resolvedSearchParams.type;
+  // Access properties directly
+  const pageParam = resolvedSearchParams.page;
+  const rarityParam = resolvedSearchParams.rarity;
+  const typeParam = resolvedSearchParams.type;
   
-    const page = pageParam ? parseInt(pageParam) : 1;
-    const rarity = rarityParam || 'all';
-    const type = typeParam || 'all';
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const rarity = rarityParam || 'all';
+  const type = typeParam || 'all';
   
-    const setId = resolvedParams.id;
+  const setId = resolvedParams.id;
   
-    const [set, cardsData] = await Promise.all([
-      getSet(setId),
-      getSetCards(setId, page, { rarity, type }),
-    ]);
+  const [set, cardsData] = await Promise.all([
+    getSet(setId),
+    getSetCards(setId, page, { rarity, type }),
+  ]);
   
-    if (!set) {
-      notFound();
-    }
+  if (!set) {
+    notFound();
+  }
   
   const { cards, pagination, filters } = cardsData;
   
   // Get the logo and symbol URLs if they exist
-  const logo = set.images && typeof set.images === 'object' && set.images !== null && 
-    'logo' in set.images && typeof set.images.logo === 'string' ? set.images.logo : null;
+  const logo =
+    set.images &&
+    typeof set.images === 'object' &&
+    set.images !== null &&
+    'logo' in set.images &&
+    typeof set.images.logo === 'string'
+      ? set.images.logo
+      : null;
     
-  const symbol = set.images && typeof set.images === 'object' && set.images !== null && 
-    'symbol' in set.images && typeof set.images.symbol === 'string' ? set.images.symbol : null;
+  const symbol =
+    set.images &&
+    typeof set.images === 'object' &&
+    set.images !== null &&
+    'symbol' in set.images &&
+    typeof set.images.symbol === 'string'
+      ? set.images.symbol
+      : null;
   
   // Generate pagination URLs
   const createPageUrl = (newPage: number, newRarity?: string, newType?: string) => {
@@ -309,12 +320,12 @@ export default async function SetDetailPage({
 function formatReleaseDate(dateString: string): string {
   try {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
-  } catch (error) {
+  } catch (_error: unknown) {
     return dateString;
   }
 }

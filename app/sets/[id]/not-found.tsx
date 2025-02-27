@@ -8,7 +8,7 @@ export default function SetNotFound() {
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <h1 className="text-4xl font-bold mb-4">Set Not Found</h1>
       <p className="text-muted-foreground text-lg max-w-md mb-8">
-        Sorry, we couldn't find the Pokémon card set you're looking for.
+        Sorry, we couldn&apos;t find the Pokémon card set you&apos;re looking for.
       </p>
       <Link href="/sets">
         <Button className="flex items-center">
