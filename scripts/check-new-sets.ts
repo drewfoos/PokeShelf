@@ -13,14 +13,15 @@ async function checkNewSets() {
     const result = await pokemonTcgService.syncNewSets();
     
     if (result.success) {
-        if (result.count > 0 && result.importedSets) {
-          console.log(`✅ Successfully imported ${result.count} new sets:`);
-          result.importedSets.forEach(set => {
-            console.log(`  - ${set.name} (${set.id}): ${set.cardCount} cards`);
-          });
-        } else {
-          console.log('✅ No new sets found. Database is up to date.');
-        }
+      // Use optional coalescing so TS knows we compare a number to 0
+      if ((result.count ?? 0) > 0 && result.importedSets) {
+        console.log(`✅ Successfully imported ${result.count} new sets:`);
+        result.importedSets.forEach(set => {
+          console.log(`  - ${set.name} (${set.id}): ${set.cardCount} cards`);
+        });
+      } else {
+        console.log('✅ No new sets found. Database is up to date.');
+      }
     } else {
       console.error('❌ Failed to check for new sets:', result.error);
     }
