@@ -16,18 +16,23 @@ const ALLOWED_IPS = [
 ];
 
 export async function POST(req: Request) {
-  // Get the SIGNING_SECRET from environment variables
-  const SIGNING_SECRET = process.env.SIGNING_SECRET;
-
-  if (!SIGNING_SECRET) {
-    throw new Error('Error: Please add SIGNING_SECRET from Clerk Dashboard to .env or .env.local');
-  }
-
+  console.log("Webhook received");
+  
   try {
+    // Get the SIGNING_SECRET from environment variables
+    const SIGNING_SECRET = process.env.SIGNING_SECRET;
+
+    if (!SIGNING_SECRET) {
+      console.error("Error: SIGNING_SECRET is missing");
+      return new Response('Error: Please add SIGNING_SECRET from Clerk Dashboard to .env or .env.local', {
+        status: 500,
+      });
+    }
+
     // Create new Svix instance with secret
     const wh = new Webhook(SIGNING_SECRET);
 
-    // Get headers - using the approach that works with Next.js 15
+    // Get headers - must be awaited in Next.js 15
     const headerPayload = headers();
     const svix_id = (await headerPayload).get('svix-id');
     const svix_timestamp = (await headerPayload).get('svix-timestamp');
@@ -42,6 +47,7 @@ export async function POST(req: Request) {
 
     // If there are no Svix headers, error out
     if (!svix_id || !svix_timestamp || !svix_signature) {
+      console.error("Missing Svix headers");
       return new Response('Error: Missing Svix headers', {
         status: 400,
       });
@@ -80,7 +86,7 @@ export async function POST(req: Request) {
         ? email_addresses[0].email_address 
         : '';
       
-      console.log(`Creating user with ID: ${id}, email: ${primaryEmail}`);
+      console.log(`Creating user with ID: ${id}, username: ${username}, email: ${primaryEmail}`);
       
       // Create the user in our database
       await prisma.user.create({
@@ -178,11 +184,14 @@ export async function POST(req: Request) {
       }
     }
     
+    // IMPORTANT: Always return a response to prevent webhook retries
     return new Response('Webhook processed successfully', { status: 200 });
   } catch (error) {
     console.error('Error processing webhook:', error);
-    return new Response(`Error processing webhook: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
-      status: 500 
+    // Return a 200 response even on error to prevent continuous retries that might flood logs
+    // You can adjust this strategy based on your preferences
+    return new Response(`Error processed: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+      status: 200 
     });
   }
 }
