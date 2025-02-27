@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronRight, Plus, Search } from "lucide-react";
 
 // Updated type definitions to match the data shape returned by Prisma
-
 interface CardImages {
   small?: string;
   [key: string]: unknown;
@@ -30,7 +29,7 @@ interface CardType {
   rarity: string;
   nationalPokedexNumbers: number[];
   images?: CardImages | null; // allow null value
-  tcgplayer: unknown;
+  tcgplayer: Record<string, unknown>;
   lastUpdated: Date;
 }
 
@@ -46,27 +45,71 @@ export const dynamic = "force-dynamic";
 
 async function getUserCollection() {
   const { userId } = await auth();
+  const clerkUser = await currentUser();
   
-  if (!userId) {
+  if (!userId || !clerkUser) {
     return null;
   }
 
   try {
     // First, find the user by clerkId
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { clerkId: userId },
       include: {
         collection: true,
       },
     });
 
+    // If no user exists in database, create one immediately
     if (!user) {
-      return null;
+      console.log(`User with Clerk ID ${userId} not found in database. Creating user record immediately.`);
+      
+      // Get primary email if available
+      const primaryEmail = clerkUser.emailAddresses && clerkUser.emailAddresses.length > 0 
+        ? clerkUser.emailAddresses[0].emailAddress 
+        : '';
+      
+      // Get user name from Clerk
+      const userName = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 
+                       clerkUser.username || 
+                       'User';
+      
+      // Create user with collection
+      user = await prisma.user.create({
+        data: {
+          clerkId: userId,
+          email: primaryEmail,
+          name: userName,
+          imageUrl: clerkUser.imageUrl || '',
+          collection: {
+            create: {
+              totalCards: 0,
+              uniqueCards: 0,
+              estimatedValue: 0,
+            },
+          },
+          wishlist: {
+            create: {}
+          }
+        },
+        include: {
+          collection: true,
+        },
+      });
+      
+      console.log(`User created successfully with ID: ${user.id}`);
     }
 
+    // Ensure the user exists before continuing (TypeScript safety)
+    if (!user) {
+      throw new Error("Failed to create user record");
+    }
+    
+    // If user exists but doesn't have a collection, create one
     if (!user.collection) {
-      // If no collection exists, create one
-      const newUser = await prisma.user.update({
+      console.log(`User ${userId} found but has no collection. Creating collection.`);
+      
+      user = await prisma.user.update({
         where: { clerkId: userId },
         data: {
           collection: {
@@ -82,15 +125,11 @@ async function getUserCollection() {
         },
       });
       
-      return {
-        user: newUser,
-        collection: newUser.collection,
-        recentCards: [],
-      };
+      console.log(`Collection created successfully for user: ${user.id}`);
     }
     
-    // Get recent cards in the collection
-    const recentCards = await prisma.userCard.findMany({
+    // Get recent cards in the collection - ensure collection exists
+    const recentCards = user.collection ? await prisma.userCard.findMany({
       where: { 
         collectionId: user.collection.id 
       },
@@ -101,7 +140,7 @@ async function getUserCollection() {
       include: {
         card: true,
       },
-    });
+    }) : [];
     
     return {
       user,
@@ -109,7 +148,7 @@ async function getUserCollection() {
       recentCards,
     };
   } catch (error) {
-    console.error("Error fetching user collection:", error);
+    console.error("Error fetching or creating user collection:", error);
     return null;
   }
 }
@@ -248,7 +287,7 @@ function CollectionCardItem({ userCard }: { userCard: UserCardType }) {
   
   // Extract image URLs from the card images object
   const images = card.images && typeof card.images === "object" ? card.images : {};
-  const smallImage = "small" in images && typeof images.small === "string" ? images.small : null;
+  const smallImage = images && "small" in images && typeof images.small === "string" ? images.small : null;
   
   return (
     <Link href={`/card/${card.id}`}>

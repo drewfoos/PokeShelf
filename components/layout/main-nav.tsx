@@ -34,7 +34,7 @@ const MainNav = () => {
               <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
                 <span className="font-bold text-lg text-primary-foreground">P</span>
               </div>
-              <span className="font-bold text-xl md:text-2xl">PokéTracker</span>
+              <span className="font-bold text-xl md:text-2xl">PokéShelf</span>
             </Link>
 
             {/* Desktop Navigation */}

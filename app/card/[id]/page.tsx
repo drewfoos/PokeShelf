@@ -8,7 +8,7 @@ import prisma from '@/lib/prisma';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import AddToCollectionButton from '@/components/collection/add-to-collection-button';
+import CollectionButton from '@/components/collection/collection-button';
 import WishlistButton from '@/components/wishlist/wishlist-button';
 
 // Make this page dynamic
@@ -190,7 +190,7 @@ export default async function CardDetailPage({
           <div className="flex flex-col space-y-4 mt-6">
             {userId ? (
               <>
-                <AddToCollectionButton 
+                <CollectionButton 
                   cardId={card.id} 
                   isFullWidth 
                 />
