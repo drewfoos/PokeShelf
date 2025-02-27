@@ -24,7 +24,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Get headers - await the headers() function for Next.js 15
+    // Create new Svix instance with secret
+    const wh = new Webhook(SIGNING_SECRET);
+
+    // Get headers - must be awaited in Next.js 15
     const headersList = await headers();
     const svix_id = headersList.get('svix-id');
     const svix_timestamp = headersList.get('svix-timestamp');
@@ -44,13 +47,10 @@ export async function POST(req: Request) {
       });
     }
 
-    // Get body as JSON string - this is critical for proper verification
+    // Get body
     const payload = await req.json();
     const body = JSON.stringify(payload);
 
-    // Create new Svix instance with secret
-    const wh = new Webhook(SIGNING_SECRET);
-    
     let evt: WebhookEvent;
 
     // Verify payload with headers
