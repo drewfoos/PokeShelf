@@ -32,7 +32,6 @@ export default function CollectionButton({
 }: CollectionButtonProps) {
   const router = useRouter();
   const [isInCollection, setIsInCollection] = useState(false);
-  const [quantity, setQuantity] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
   
@@ -44,7 +43,6 @@ export default function CollectionButton({
         if (response.ok) {
           const data = await response.json();
           setIsInCollection(data.inCollection);
-          setQuantity(data.quantity || 0);
         }
       } catch (error) {
         console.error('Error checking collection status:', error);
@@ -79,7 +77,6 @@ export default function CollectionButton({
       
       const data = await response.json();
       setIsInCollection(true);
-      setQuantity(1);
       
       toast.success("Card added to your collection");
       
@@ -113,7 +110,6 @@ export default function CollectionButton({
       }
       
       setIsInCollection(false);
-      setQuantity(0);
       
       toast.success("Card removed from your collection");
       
