@@ -27,12 +27,12 @@ export async function POST(req: Request) {
     // Create new Svix instance with secret
     const wh = new Webhook(SIGNING_SECRET);
 
-    // Get headers - must be awaited in Next.js 15
-    const headersList = await headers();
-    const svix_id = headersList.get('svix-id');
-    const svix_timestamp = headersList.get('svix-timestamp');
-    const svix_signature = headersList.get('svix-signature');
-    const clientIp = headersList.get('x-forwarded-for')?.split(',')[0]?.trim();
+    // Get headers - using the approach that works with Next.js 15
+    const headerPayload = headers();
+    const svix_id = (await headerPayload).get('svix-id');
+    const svix_timestamp = (await headerPayload).get('svix-timestamp');
+    const svix_signature = (await headerPayload).get('svix-signature');
+    const clientIp = (await headerPayload).get('x-forwarded-for')?.split(',')[0]?.trim();
 
     // IP validation in production
     if (process.env.NODE_ENV === 'production' && clientIp && !ALLOWED_IPS.includes(clientIp)) {
@@ -68,9 +68,8 @@ export async function POST(req: Request) {
     }
 
     // Process the webhook based on event type
-    const { id } = evt.data;
     const eventType = evt.type;
-    console.log(`Received webhook with ID ${id} and event type of ${eventType}`);
+    console.log(`Received webhook with event type: ${eventType}`);
     
     if (eventType === 'user.created') {
       // A new user has been created in Clerk
@@ -80,6 +79,8 @@ export async function POST(req: Request) {
       const primaryEmail = email_addresses && email_addresses.length > 0 
         ? email_addresses[0].email_address 
         : '';
+      
+      console.log(`Creating user with ID: ${id}, email: ${primaryEmail}`);
       
       // Create the user in our database
       await prisma.user.create({
@@ -111,6 +112,8 @@ export async function POST(req: Request) {
       const primaryEmail = email_addresses && email_addresses.length > 0 
         ? email_addresses[0].email_address 
         : '';
+      
+      console.log(`Updating user with ID: ${id}, email: ${primaryEmail}`);
       
       // Find the user in our database by Clerk ID
       const user = await prisma.user.findUnique({
@@ -156,6 +159,8 @@ export async function POST(req: Request) {
     } else if (eventType === 'user.deleted') {
       // User has been deleted from Clerk
       const { id } = evt.data;
+      
+      console.log(`Deleting user with ID: ${id}`);
       
       // Find and delete the user from our database
       const user = await prisma.user.findUnique({
