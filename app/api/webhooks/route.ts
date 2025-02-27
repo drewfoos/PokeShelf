@@ -3,52 +3,76 @@ import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import prisma from '@/lib/prisma';
 
+// Svix webhook IP addresses
+const ALLOWED_IPS = [
+  // US
+  "44.228.126.217", "50.112.21.217", "52.24.126.164", "54.148.139.208", 
+  // US-East
+  "54.164.207.221", "54.90.7.123",
+  // EU
+  "52.215.16.239", "54.216.8.72", "63.33.109.123",
+  // India
+  "13.126.41.108", "15.207.218.84", "65.2.133.31"
+];
+
 export async function POST(req: Request) {
+  // Get the SIGNING_SECRET from environment variables
   const SIGNING_SECRET = process.env.SIGNING_SECRET;
 
   if (!SIGNING_SECRET) {
     throw new Error('Error: Please add SIGNING_SECRET from Clerk Dashboard to .env or .env.local');
   }
 
-  // Create new Svix instance with secret
-  const wh = new Webhook(SIGNING_SECRET);
-
-  // Get headers
-  const headerPayload = await headers();
-  const svix_id = headerPayload.get('svix-id');
-  const svix_timestamp = headerPayload.get('svix-timestamp');
-  const svix_signature = headerPayload.get('svix-signature');
-
-  // If there are no headers, error out
-  if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response('Error: Missing Svix headers', {
-      status: 400,
-    });
-  }
-
-  // Get body
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
-
-  let evt: WebhookEvent;
-
-  // Verify payload with headers
   try {
-    evt = wh.verify(body, {
-      'svix-id': svix_id,
-      'svix-timestamp': svix_timestamp,
-      'svix-signature': svix_signature,
-    }) as WebhookEvent;
-  } catch (err) {
-    console.error('Error: Could not verify webhook:', err);
-    return new Response('Error: Verification error', {
-      status: 400,
-    });
-  }
+    // Get headers - await the headers() function for Next.js 15
+    const headersList = await headers();
+    const svix_id = headersList.get('svix-id');
+    const svix_timestamp = headersList.get('svix-timestamp');
+    const svix_signature = headersList.get('svix-signature');
+    const clientIp = headersList.get('x-forwarded-for')?.split(',')[0]?.trim();
 
-  // Process the webhook based on event type
-  try {
-    if (evt.type === 'user.created') {
+    // IP validation in production
+    if (process.env.NODE_ENV === 'production' && clientIp && !ALLOWED_IPS.includes(clientIp)) {
+      console.error(`Unauthorized webhook attempt from IP: ${clientIp}`);
+      return new Response('Unauthorized IP', { status: 403 });
+    }
+
+    // If there are no Svix headers, error out
+    if (!svix_id || !svix_timestamp || !svix_signature) {
+      return new Response('Error: Missing Svix headers', {
+        status: 400,
+      });
+    }
+
+    // Get body as JSON string - this is critical for proper verification
+    const payload = await req.json();
+    const body = JSON.stringify(payload);
+
+    // Create new Svix instance with secret
+    const wh = new Webhook(SIGNING_SECRET);
+    
+    let evt: WebhookEvent;
+
+    // Verify payload with headers
+    try {
+      evt = wh.verify(body, {
+        'svix-id': svix_id,
+        'svix-timestamp': svix_timestamp,
+        'svix-signature': svix_signature,
+      }) as WebhookEvent;
+    } catch (err) {
+      console.error('Error: Could not verify webhook:', err);
+      return new Response('Error: Verification error', {
+        status: 400,
+      });
+    }
+
+    // Process the webhook based on event type
+    const { id } = evt.data;
+    const eventType = evt.type;
+    console.log(`Received webhook with ID ${id} and event type of ${eventType}`);
+    
+    if (eventType === 'user.created') {
       // A new user has been created in Clerk
       const { id, email_addresses, image_url, first_name, last_name, username } = evt.data;
       
@@ -79,7 +103,7 @@ export async function POST(req: Request) {
       });
 
       console.log(`User created with ID: ${id}`);
-    } else if (evt.type === 'user.updated') {
+    } else if (eventType === 'user.updated') {
       // User information has been updated in Clerk
       const { id, email_addresses, image_url, first_name, last_name, username } = evt.data;
       
@@ -129,7 +153,7 @@ export async function POST(req: Request) {
         
         console.log(`User created during update with ID: ${id}`);
       }
-    } else if (evt.type === 'user.deleted') {
+    } else if (eventType === 'user.deleted') {
       // User has been deleted from Clerk
       const { id } = evt.data;
       
@@ -152,6 +176,8 @@ export async function POST(req: Request) {
     return new Response('Webhook processed successfully', { status: 200 });
   } catch (error) {
     console.error('Error processing webhook:', error);
-    return new Response('Error processing webhook', { status: 500 });
+    return new Response(`Error processing webhook: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+      status: 500 
+    });
   }
 }
