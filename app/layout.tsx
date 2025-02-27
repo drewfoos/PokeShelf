@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'PokéTracker - Track Your Pokemon Card Collection',
+  title: 'PokéShelf - Track Your Pokemon Card Collection',
   description: 'A web application to browse, track, and manage your Pokemon card collection.',
 }
 

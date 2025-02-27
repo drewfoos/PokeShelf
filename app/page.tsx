@@ -35,11 +35,11 @@ export default async function HomePage() {
       {/* Hero Section */}
       <HeroSection />
 
-      {/* Features Section */}
-      <FeaturesSection />
-
       {/* Recent Sets Section */}
       <RecentSets sets={recentSets} />
+
+      {/* Features Section */}
+      <FeaturesSection />
       
       {/* CTA Section - only show when signed out */}
       <SignedOut>
