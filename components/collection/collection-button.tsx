@@ -75,7 +75,6 @@ export default function CollectionButton({
         throw new Error(error.error || 'Failed to add card to collection');
       }
       
-      const data = await response.json();
       setIsInCollection(true);
       
       toast.success("Card added to your collection");
