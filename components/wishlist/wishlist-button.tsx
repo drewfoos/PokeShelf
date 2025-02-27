@@ -24,7 +24,6 @@ interface WishlistButtonProps {
 }
 
 export default function WishlistButton({ 
-  cardId, 
   variant = 'outline', 
   size = 'default',
   isFullWidth = false 

@@ -1,4 +1,3 @@
-// lib/services/pokemonTcgService.ts
 import prisma from '../prisma';
 
 interface PaginationOptions {
@@ -10,6 +9,7 @@ interface PaginationOptions {
 interface QueryOptions extends PaginationOptions {
   q?: string;
   select?: string;
+  [key: string]: unknown; // add this line to allow arbitrary string keys
 }
 
 /**
@@ -27,13 +27,18 @@ export class PokemonTcgService {
   /**
    * Make a request to the Pokémon TCG API with rate limit awareness
    */
-  private async makeRequest(endpoint: string, params: Record<string, any> = {}, retries = 3): Promise<any> {
+  private async makeRequest(
+    endpoint: string,
+    params: Record<string, unknown> = {},
+    retries = 3
+  ): Promise<unknown> {
     const url = new URL(`${this.baseUrl}${endpoint}`);
     
     // Add query parameters
     Object.keys(params).forEach(key => {
-      if (params[key] !== undefined && params[key] !== null) {
-        url.searchParams.append(key, params[key]);
+      const value = params[key];
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, String(value));
       }
     });
 
@@ -63,7 +68,7 @@ export class PokemonTcgService {
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = `API Error: ${errorData.error?.message || response.statusText}`;
-        } catch (parseError: any) {
+        } catch (_: unknown) {
           errorMessage = `API Error: ${errorText || response.statusText}`;
         }
         
@@ -78,12 +83,12 @@ export class PokemonTcgService {
       
       try {
         return JSON.parse(text);
-      } catch (parseError: any) {
+      } catch (_: unknown) {
         console.error('Failed to parse response as JSON:', text);
-        throw new Error(`Failed to parse API response: ${parseError.message}`);
+        throw new Error('Failed to parse API response');
       }
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (retries > 0) {
         console.log(`Request failed. Retrying... (${retries} attempts left)`);
         // Wait longer between retries
@@ -139,7 +144,8 @@ export class PokemonTcgService {
   async syncSets() {
     try {
       const response = await this.getSets({ pageSize: 250 });
-      const sets = response.data;
+      // Assuming response is of type { data: any[] }
+      const sets = (response as any).data;
       
       console.log(`Syncing ${sets.length} sets to database...`);
       
@@ -176,7 +182,7 @@ export class PokemonTcgService {
       
       console.log('Sets sync completed');
       return { success: true, count: sets.length };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to sync sets:', error);
       return { success: false, error };
     }
@@ -189,7 +195,7 @@ export class PokemonTcgService {
     try {
       // Get all sets from API
       const response = await this.getSets({ pageSize: 250 });
-      const apiSets = response.data;
+      const apiSets = (response as any).data;
       
       // Get all sets we already have in the database
       const dbSets = await prisma.set.findMany({
@@ -249,7 +255,7 @@ export class PokemonTcgService {
         count: newSets.length,
         importedSets 
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to sync new sets:', error);
       return { success: false, error };
     }
@@ -262,7 +268,7 @@ export class PokemonTcgService {
     try {
       // Get set details
       const setResponse = await this.getSet(setId);
-      const setData = setResponse.data;
+      const setData = (setResponse as any).data;
       
       if (!setData) {
         throw new Error(`Set with ID ${setId} not found`);
@@ -275,25 +281,22 @@ export class PokemonTcgService {
       let hasMoreCards = true;
       let totalCards = 0;
       
-      // Add a delay function that respects rate limits
-      // 30 requests per minute = 1 request per 2 seconds to be safe
+      // Delay function to respect rate limits (approx. 1 request per 2 seconds)
       const delay = () => new Promise(resolve => setTimeout(resolve, 2100));
       
       while (hasMoreCards) {
-        // Wait before each request to respect rate limits
         await delay();
         
         console.log(`Fetching page ${page} for set ${setData.name}...`);
         const cardsResponse = await this.searchCards(query, { page, pageSize });
-        const cards = cardsResponse.data;
+        const cards = (cardsResponse as any).data;
         
         console.log(`Syncing ${cards.length} cards from set ${setData.name} (page ${page})...`);
         
-        // Process cards in smaller batches with delays
         for (let i = 0; i < cards.length; i++) {
           const cardData = cards[i];
           
-          // Every 5 cards, add a small delay to avoid overwhelming the database
+          // Delay every 5 cards to avoid overwhelming the database
           if (i > 0 && i % 5 === 0) {
             await new Promise(resolve => setTimeout(resolve, 100));
           }
@@ -347,9 +350,8 @@ export class PokemonTcgService {
                   firstEdition: cardData.tcgplayer.prices['1stEditionHolofoil']?.market || null
                 }
               });
-            } catch (error: any) {
-              // If there's a duplicate price entry, just ignore it
-              if (!error.message?.includes('Unique constraint failed')) {
+            } catch (error: unknown) {
+              if (error instanceof Error && !error.message.includes('Unique constraint failed')) {
                 console.error(`Error creating price history for card ${cardData.id}:`, error);
               }
             }
@@ -358,20 +360,18 @@ export class PokemonTcgService {
         
         totalCards += cards.length;
         
-        // Check if we need to fetch more pages
         if (cards.length < pageSize) {
           hasMoreCards = false;
         } else {
           page++;
         }
         
-        // Log progress
         console.log(`Processed ${totalCards} cards so far from set ${setData.name}`);
       }
       
       console.log(`Completed sync of ${totalCards} cards from set ${setData.name}`);
       return { success: true, count: totalCards };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Failed to sync cards from set ${setId}:`, error);
       return { success: false, error };
     }
@@ -380,37 +380,31 @@ export class PokemonTcgService {
   /**
    * Update prices for specified cards (or all cards if no IDs provided)
    */
-  async updateCardPrices(cardIds: string[] = []): Promise<{ success: boolean; count?: number; error?: any }> {
+  async updateCardPrices(cardIds: string[] = []): Promise<{ success: boolean; count?: number; error?: unknown }> {
     try {
-      // If specific cards are provided, update only those
       if (cardIds.length > 0) {
         const batchSize = 50;
         const batches = [];
         
-        // Split card IDs into batches to avoid overwhelming the API
         for (let i = 0; i < cardIds.length; i += batchSize) {
           batches.push(cardIds.slice(i, i + batchSize));
         }
         
         console.log(`Updating prices for ${cardIds.length} specific cards in ${batches.length} batches`);
-        
         let updatedCount = 0;
         
         for (let i = 0; i < batches.length; i++) {
           const batch = batches[i];
           const query = batch.map(id => `id:${id}`).join(' OR ');
-          
-          // Respect rate limits
           await new Promise(resolve => setTimeout(resolve, 2100));
           
           console.log(`Processing batch ${i + 1}/${batches.length} (${batch.length} cards)...`);
           const cardsResponse = await this.getCards({ q: query, pageSize: batchSize });
-          const cards = cardsResponse.data;
+          const cards = (cardsResponse as any).data;
           
           for (const card of cards) {
             if (card.tcgplayer?.prices) {
               try {
-                // Create a new price history entry
                 await prisma.priceHistory.create({
                   data: {
                     cardId: card.id,
@@ -422,7 +416,6 @@ export class PokemonTcgService {
                   }
                 });
                 
-                // Update the card's current price data
                 await prisma.card.update({
                   where: { id: card.id },
                   data: {
@@ -432,9 +425,8 @@ export class PokemonTcgService {
                 });
                 
                 updatedCount++;
-              } catch (error: any) {
-                // If there's a duplicate price entry, just ignore it
-                if (!error.message?.includes('Unique constraint failed')) {
+              } catch (error: unknown) {
+                if (error instanceof Error && !error.message.includes('Unique constraint failed')) {
                   console.error(`Error updating price for card ${card.id}:`, error);
                 }
               }
@@ -443,11 +435,7 @@ export class PokemonTcgService {
         }
         
         return { success: true, count: updatedCount };
-      } 
-      // Otherwise, update prices for all cards in the collection
-      else {
-        // This would be a lot of API calls, so we'll just update cards
-        // that are in user collections
+      } else {
         const userCards = await prisma.userCard.findMany({
           select: {
             cardId: true
@@ -456,17 +444,15 @@ export class PokemonTcgService {
         });
         
         const uniqueCardIds = userCards.map(uc => uc.cardId);
-        
         console.log(`Found ${uniqueCardIds.length} unique cards in user collections`);
         
         if (uniqueCardIds.length === 0) {
           return { success: true, count: 0 };
         }
         
-        // Call this same function with the list of cards to update
         return this.updateCardPrices(uniqueCardIds);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update card prices:', error);
       return { success: false, error };
     }
