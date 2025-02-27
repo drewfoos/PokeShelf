@@ -72,10 +72,6 @@ interface PokemonCardResponse {
   data: PokemonCard[];
 }
 
-interface PokemonCardSingleResponse {
-  data: PokemonCard;
-}
-
 /**
  * Service for interacting with the Pokémon TCG API and managing card data
  */

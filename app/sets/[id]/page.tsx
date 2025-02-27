@@ -325,7 +325,7 @@ function formatReleaseDate(dateString: string): string {
       month: "short",
       day: "numeric",
     });
-  } catch (_error: unknown) {
+  } catch { 
     return dateString;
   }
 }
