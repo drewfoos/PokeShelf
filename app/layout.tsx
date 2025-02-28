@@ -27,7 +27,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider 
+    signInForceRedirectUrl="/"
+    signUpForceRedirectUrl="/"
+    afterSignOutUrl="/"  // if you still want to use it for sign out
+    >
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground`}>
           <MainNav />

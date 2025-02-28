@@ -106,6 +106,7 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
                       <Image 
                         src={set.images.logo}
                         alt={`${set.name} logo`}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                         fill
                         className="object-contain"
                       />

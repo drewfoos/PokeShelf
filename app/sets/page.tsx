@@ -50,6 +50,8 @@ export default async function SetsPage() {
                     <Image 
                       src={set.images.logo}
                       alt={`${set.name} logo`}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                      priority
                       fill
                       className="object-contain"
                     />

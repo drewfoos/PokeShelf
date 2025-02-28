@@ -10,8 +10,14 @@ import {
   SignedOut,
   UserButton
 } from '@clerk/nextjs';
-import { Search, Menu } from 'lucide-react';
+import { Search, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetClose
+} from '@/components/ui/sheet';
 
 const MainNav = () => {
   const [search, setSearch] = useState('');
@@ -21,6 +27,7 @@ const MainNav = () => {
     e.preventDefault();
     if (search.trim()) {
       router.push(`/search?q=${encodeURIComponent(search.trim())}`);
+      setSearch('');
     }
   };
 
@@ -39,6 +46,12 @@ const MainNav = () => {
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-6">
+              <Link
+                href="/sets"
+                className="text-sm font-medium transition-colors hover:text-primary"
+              >
+                Sets
+              </Link>
               <SignedIn>
                 <Link
                   href="/collection"
@@ -87,7 +100,6 @@ const MainNav = () => {
             </SignedOut>
             <SignedIn>
               <UserButton
-                afterSignOutUrl="/"
                 appearance={{
                   elements: {
                     userButtonAvatarBox: 'w-9 h-9 border-2 border-primary/25'
@@ -96,11 +108,97 @@ const MainNav = () => {
               />
             </SignedIn>
 
-            {/* Mobile Menu Button */}
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
+            {/* Mobile Menu */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[80%] sm:w-[350px]">
+                <div className="flex flex-col h-full">
+                  <div className="py-6">
+                    <Link href="/" className="flex items-center gap-2 mb-6">
+                      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
+                        <span className="font-bold text-lg text-primary-foreground">P</span>
+                      </div>
+                      <span className="font-bold text-xl">PokéShelf</span>
+                    </Link>
+                    
+                    {/* Mobile Search */}
+                    <form 
+                      onSubmit={(e) => {
+                        handleSubmit(e);
+                        document.querySelector<HTMLButtonElement>('[data-sheet-close]')?.click();
+                      }} 
+                      className="mb-6"
+                    >
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          placeholder="Search cards..."
+                          className="w-full rounded-md border border-border bg-muted py-2 pl-10 pr-4 text-sm"
+                        />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </form>
+                    
+                    {/* Mobile Navigation */}
+                    <nav className="flex flex-col space-y-4">
+                      <SheetClose asChild>
+                        <Link
+                          href="/sets"
+                          className="text-base font-medium px-2 py-1.5 rounded-md hover:bg-muted"
+                        >
+                          Sets
+                        </Link>
+                      </SheetClose>
+                      <SignedIn>
+                        <SheetClose asChild>
+                          <Link
+                            href="/collection"
+                            className="text-base font-medium px-2 py-1.5 rounded-md hover:bg-muted"
+                          >
+                            My Collection
+                          </Link>
+                        </SheetClose>
+                        <SheetClose asChild>
+                          <Link
+                            href="/wishlist"
+                            className="text-base font-medium px-2 py-1.5 rounded-md hover:bg-muted"
+                          >
+                            Wishlist
+                          </Link>
+                        </SheetClose>
+                      </SignedIn>
+                    </nav>
+                  </div>
+                  
+                  {/* Mobile Auth Buttons */}
+                  <div className="mt-auto border-t border-border pt-6">
+                    <SignedOut>
+                      <div className="grid grid-cols-2 gap-2">
+                        <SheetClose asChild>
+                          <SignInButton mode="modal">
+                            <Button variant="outline" className="w-full">
+                              Sign In
+                            </Button>
+                          </SignInButton>
+                        </SheetClose>
+                        <SheetClose asChild>
+                          <SignUpButton mode="modal">
+                            <Button className="w-full">Sign Up</Button>
+                          </SignUpButton>
+                        </SheetClose>
+                      </div>
+                    </SignedOut>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
