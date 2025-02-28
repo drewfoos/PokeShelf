@@ -42,7 +42,6 @@ export default function SearchFilters({
   currentFilters 
 }: SearchFiltersProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   
   // Form state
