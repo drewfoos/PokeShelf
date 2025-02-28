@@ -28,9 +28,19 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider 
-    signInForceRedirectUrl="/"
-    signUpForceRedirectUrl="/"
-    afterSignOutUrl="/"  // if you still want to use it for sign out
+      signInForceRedirectUrl="/"
+      signUpForceRedirectUrl="/"
+      afterSignOutUrl="/"
+      appearance={{
+        layout: {
+          termsPageUrl: "/terms",
+          privacyPageUrl: "/privacy"
+        },
+        elements: {
+          formButtonPrimary: "bg-primary hover:bg-primary/90 text-primary-foreground",
+          footerActionLink: "text-primary hover:text-primary/90"
+        }
+      }}
     >
       <html lang="en">
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground`}>

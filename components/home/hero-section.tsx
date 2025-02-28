@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { SignedIn, SignedOut } from '@clerk/nextjs';
+import { SignedIn, SignedOut, SignUpButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import prisma from '@/lib/prisma';
 import { JsonValue } from '@prisma/client/runtime/library';
@@ -82,11 +82,11 @@ const HeroSection = async () => {
          
           <div className="flex flex-col sm:flex-row gap-4 mt-4">
             <SignedOut>
-              <Link href="/sign-up">
+              <SignUpButton mode="modal">
                 <Button size="lg" className="shadow-md bg-primary hover:bg-primary/90">
                   Get Started
                 </Button>
-              </Link>
+              </SignUpButton>
             </SignedOut>
             <SignedIn>
               <Link href="/collection">

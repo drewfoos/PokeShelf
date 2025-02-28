@@ -1,6 +1,6 @@
 import React from 'react';
-import Link from 'next/link';
 import { Database } from 'lucide-react';
+import { SignUpButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 
 const CTASection = () => {
@@ -15,11 +15,13 @@ const CTASection = () => {
           <p className="text-muted-foreground max-w-[600px]">
             Create an account to start building your collection, tracking values, and more.
           </p>
-          <Link href="/sign-up" className="mt-6">
-            <Button size="lg" className="shadow-md bg-primary hover:bg-primary/90">
-              Create a Free Account
-            </Button>
-          </Link>
+          <div className="mt-6">
+            <SignUpButton mode="modal">
+              <Button size="lg" className="shadow-md bg-primary hover:bg-primary/90">
+                Create a Free Account
+              </Button>
+            </SignUpButton>
+          </div>
         </div>
       </div>
     </section>

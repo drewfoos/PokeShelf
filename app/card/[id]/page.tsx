@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, ExternalLink, DollarSign, Heart } from 'lucide-react';
 import { auth } from "@clerk/nextjs/server";
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import prisma from '@/lib/prisma';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -201,25 +202,18 @@ export default async function CardDetailPage({
               </>
             ) : (
               <>
-                <Button 
-                  className="w-full" 
-                  asChild
-                >
-                  <Link href={`/sign-in?redirect=/card/${card.id}`}>
+                <SignInButton mode="modal">
+                  <Button className="w-full">
                     <DollarSign className="h-4 w-4 mr-2" />
                     Sign in to Track in Collection
-                  </Link>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  asChild
-                >
-                  <Link href={`/sign-up?redirect=/card/${card.id}`}>
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button variant="outline" className="w-full">
                     <Heart className="h-4 w-4 mr-2" />
                     Create Account to Start Collecting
-                  </Link>
-                </Button>
+                  </Button>
+                </SignUpButton>
               </>
             )}
           </div>
