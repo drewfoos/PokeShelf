@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
     let query = url.searchParams.get("q") || "";
     let page = parseInt(url.searchParams.get("page") || "1", 10);
     let pageSize = parseInt(url.searchParams.get("pageSize") || "20", 10);
-    let set = url.searchParams.get("set") || "";
-    let type = url.searchParams.get("type") || "";
-    let rarity = url.searchParams.get("rarity") || "";
+    const set = url.searchParams.get("set") || "";
+    const type = url.searchParams.get("type") || "";
+    const rarity = url.searchParams.get("rarity") || "";
 
     // --- Input Validation & Sanitization ---
     // Limit maximum query length to 100 characters
