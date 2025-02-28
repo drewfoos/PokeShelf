@@ -11,7 +11,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { Search, X } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 

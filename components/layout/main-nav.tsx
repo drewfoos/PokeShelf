@@ -10,7 +10,7 @@ import {
   SignedOut,
   UserButton
 } from '@clerk/nextjs';
-import { Search, Menu, X } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,

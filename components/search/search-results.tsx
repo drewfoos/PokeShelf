@@ -5,6 +5,7 @@ import Link from 'next/link';
 import CardGrid from '@/components/cards/cards-grid';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import type { Card } from '@prisma/client';
 
 interface PaginationType {
   page: number;
@@ -14,7 +15,7 @@ interface PaginationType {
 }
 
 interface SearchResultsProps {
-  cards: any[];
+  cards: Card[];
   pagination: PaginationType;
   searchParams: {
     q?: string;
@@ -70,7 +71,7 @@ export default function SearchResults({
     const maxLinksToShow = 5; // Maximum number of numbered links to show
     
     let startPage = Math.max(1, page - Math.floor(maxLinksToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxLinksToShow - 1);
+    const endPage = Math.min(totalPages, startPage + maxLinksToShow - 1);
     
     // Adjust if we're near the end
     if (endPage - startPage + 1 < maxLinksToShow && startPage > 1) {
