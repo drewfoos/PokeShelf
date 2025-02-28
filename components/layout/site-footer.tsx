@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 
+// Todo: add not affiliated with pokemon company
 const SiteFooter = () => {
   return (
     <footer className="border-t py-6 md:py-0 bg-muted/30">
