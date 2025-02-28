@@ -28,8 +28,6 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider 
-      signInForceRedirectUrl="/"
-      signUpForceRedirectUrl="/"
       afterSignOutUrl="/"
       appearance={{
         layout: {
