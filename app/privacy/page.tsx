@@ -31,7 +31,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-xl font-semibold mb-3">1. Introduction</h2>
           <p>
-            Welcome to PokéShelf ("we", "us", "our"). We are committed to protecting your personal information 
+            Welcome to PokéShelf (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;). We are committed to protecting your personal information 
             and your right to privacy. This Privacy Policy explains how we collect, use, and safeguard your 
             information when you visit our website (https://www.pokeshelf.com/) and use our services.
           </p>
@@ -59,7 +59,7 @@ export default function PrivacyPage() {
             <div>
               <h3 className="font-medium">Profile Information:</h3>
               <ul className="list-disc ml-6">
-                <li>Name: Your display name (e.g., "Andrew Dryfoos").</li>
+                <li>Name: Your display name (e.g., &quot;Andrew Dryfoos&quot;).</li>
                 <li>Image URL: A link to your profile picture (if provided).</li>
               </ul>
             </div>

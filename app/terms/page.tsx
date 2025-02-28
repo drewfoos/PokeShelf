@@ -31,7 +31,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-xl font-semibold mb-3">1. Acceptance of Terms</h2>
           <p>
-            By accessing or using PokéShelf (the "Service"), you agree to these Terms of Service ("Terms"). 
+            By accessing or using PokéShelf (the &quot;Service&quot;), you agree to these Terms of Service (&quot;Terms&quot;). 
             If you do not agree with these Terms, please do not use our Service.
           </p>
         </section>
@@ -79,7 +79,7 @@ export default function TermsPage() {
           <h2 className="text-xl font-semibold mb-3">5. Disclaimers and Limitation of Liability</h2>
           <ul className="list-disc ml-6 space-y-2">
             <li>
-              <strong>Disclaimer of Warranties:</strong> The Service is provided "as is" and "as available" 
+              <strong>Disclaimer of Warranties:</strong> The Service is provided &quot;as is&quot; and &quot;as available&quot; 
               without any warranties, express or implied.
             </li>
             <li>
