@@ -18,6 +18,7 @@ import {
   SheetTrigger,
   SheetClose
 } from '@/components/ui/sheet';
+import AdminNavLink from './admin-nav-link';
 
 const MainNav = () => {
   const [search, setSearch] = useState('');
@@ -65,6 +66,8 @@ const MainNav = () => {
                 >
                   Wishlist
                 </Link>
+                {/* Admin Dashboard Link (only shown to admins) */}
+                <AdminNavLink />
               </SignedIn>
             </nav>
           </div>
@@ -173,6 +176,9 @@ const MainNav = () => {
                             Wishlist
                           </Link>
                         </SheetClose>
+                        <div className="px-2 py-1.5">
+                          <AdminNavLink />
+                        </div>
                       </SignedIn>
                     </nav>
                   </div>
