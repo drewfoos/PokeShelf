@@ -26,23 +26,37 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Define interfaces for the expected data types
+interface SyncResult {
+  count: number;
+  // Add additional properties as needed
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  isAdmin: boolean;
+  createdAt: string;
+}
+
 export default function AdminDashboard() {
   const [loading, setLoading] = useState<string | null>(null);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<SyncResult | null>(null);
   const [setId, setSetId] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
   const [selectedSet, setSelectedSet] = useState<string>('');
-  
+
   // Popular sets for easy selection
   const popularSets = [
     { id: 'sv4', name: 'Scarlet & Violet—Paradox Rift' },
     { id: 'sv3pt5', name: 'Scarlet & Violet—Paldean Fates' },
     { id: 'sv3', name: 'Scarlet & Violet—Obsidian Flames' },
-    { id: 'mcd21', name: 'McDonald\'s Collection 2021' },
-    { id: 'mcd22', name: 'McDonald\'s Collection 2022' },
+    { id: 'mcd21', name: "McDonald's Collection 2021" },
+    { id: 'mcd22', name: "McDonald's Collection 2022" },
     { id: 'base1', name: 'Base Set' },
     { id: 'gym1', name: 'Gym Heroes' },
     { id: 'neo1', name: 'Neo Genesis' },
@@ -120,14 +134,14 @@ export default function AdminDashboard() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to sync McDonald\'s sets');
+        throw new Error(data.error || "Failed to sync McDonald's sets");
       }
       
       setResults(data.result);
-      toast.success('McDonald\'s sets have been synced');
+      toast.success("McDonald's sets have been synced");
     } catch (error) {
-      console.error('Error syncing McDonald\'s sets:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to sync McDonald\'s sets');
+      console.error("Error syncing McDonald's sets:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to sync McDonald's sets");
     } finally {
       setLoading(null);
     }
@@ -451,7 +465,7 @@ export default function AdminDashboard() {
                     <div>Created</div>
                   </div>
                   <div className="divide-y">
-                    {users.map((user: any) => (
+                    {users.map((user) => (
                       <div key={user.id} className="grid grid-cols-4 p-3 items-center">
                         <div className="truncate" title={user.name}>{user.name}</div>
                         <div className="truncate" title={user.email}>{user.email}</div>
