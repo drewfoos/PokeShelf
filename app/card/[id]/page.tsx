@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { ChevronLeft, ExternalLink, DollarSign, Heart, TrendingUp, Info, Sparkles, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, DollarSign, Heart, TrendingUp, Info, Sparkles, ArrowUpRight } from 'lucide-react';
 import { auth } from "@clerk/nextjs/server";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import prisma from '@/lib/prisma';

@@ -8,10 +8,31 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+interface TCGPlayerPriceData {
+  low: number;
+  mid: number;
+  high: number;
+  market: number;
+  directLow: number | null;
+}
+
+interface TCGPlayerPrices {
+  normal?: TCGPlayerPriceData;
+  holofoil?: TCGPlayerPriceData;
+  reverseHolofoil?: TCGPlayerPriceData;
+  '1stEditionHolofoil'?: TCGPlayerPriceData;
+}
+
+interface TCGPlayerData {
+  url: string;
+  updatedAt: string;
+  prices?: TCGPlayerPrices;
+}
+
 /**
  * Gets the appropriate price for a card based on the card properties
  */
-export function getCardPrice(tcgplayer: any, isFoil: boolean = false, isFirstEdition: boolean = false): number | null {
+export function getCardPrice(tcgplayer: TCGPlayerData | null, isFoil = false, isFirstEdition = false): number | null {
   if (!tcgplayer || !tcgplayer.prices) return null;
   
   const prices = tcgplayer.prices;
