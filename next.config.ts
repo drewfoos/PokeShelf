@@ -41,7 +41,7 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: `
               default-src 'self';
-              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://challenges.cloudflare.com https://cdnjs.cloudflare.com;
+              script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.pokeshelf.com https://challenges.cloudflare.com https://cdnjs.cloudflare.com;
               connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.dev https://api.clerk.dev https://api.pokemontcg.io https://*.mongodb-api.com;
               img-src 'self' data: https://images.pokemontcg.io https://img.clerk.com;
               worker-src 'self' blob:;
