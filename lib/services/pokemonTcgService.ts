@@ -1,5 +1,6 @@
 // lib/services/pokemonTcgService.ts
 import prisma from '../prisma';
+import { Prisma } from '@prisma/client';
 
 interface PaginationOptions {
   page?: number;
@@ -13,7 +14,49 @@ interface QueryOptions extends PaginationOptions {
   [key: string]: unknown; // allow arbitrary string keys
 }
 
-// --- Define interfaces for API responses ---
+// --- Define interfaces for API responses with Prisma-compatible JSON types ---
+
+// Define proper type for legalities with index signature
+interface Legalities {
+  standard?: string;
+  expanded?: string;
+  unlimited?: string;
+  [key: string]: string | undefined; // Makes it compatible with Prisma
+}
+
+// Define proper types for images with index signature
+interface SetImages {
+  symbol: string;
+  logo: string;
+  [key: string]: string; // Makes it compatible with Prisma
+}
+
+interface CardImages {
+  small: string;
+  large: string;
+  [key: string]: string; // Makes it compatible with Prisma
+}
+
+// Define proper types for TCGPlayer with nested index signatures
+interface TCGPlayerPriceDetails {
+  market: number;
+  [key: string]: number | undefined;
+}
+
+interface TCGPlayerPrices {
+  normal?: TCGPlayerPriceDetails;
+  holofoil?: TCGPlayerPriceDetails;
+  reverseHolofoil?: TCGPlayerPriceDetails;
+  '1stEditionHolofoil'?: TCGPlayerPriceDetails;
+  [key: string]: TCGPlayerPriceDetails | undefined;
+}
+
+interface TCGPlayerData {
+  prices?: TCGPlayerPrices;
+  url?: string;
+  updatedAt?: string;
+  [key: string]: unknown; // Makes it compatible with Prisma
+}
 
 export interface PokemonSet {
   id: string;
@@ -21,14 +64,11 @@ export interface PokemonSet {
   series: string;
   printedTotal: number;
   total: number;
-  legalities?: Record<string, unknown>;
+  legalities?: Legalities;
   ptcgoCode?: string;
   releaseDate: string;
   updatedAt: string;
-  images: {
-    symbol: string;
-    logo: string;
-  };
+  images: SetImages;
 }
 
 interface PokemonSetResponse {
@@ -54,18 +94,8 @@ export interface PokemonCard {
   artist?: string;
   rarity: string;
   nationalPokedexNumbers: number[];
-  images: {
-    small: string;
-    large: string;
-  };
-  tcgplayer?: {
-    prices?: {
-      normal?: { market: number };
-      holofoil?: { market: number };
-      reverseHolofoil?: { market: number };
-      '1stEditionHolofoil'?: { market: number };
-    };
-  };
+  images: CardImages;
+  tcgplayer?: TCGPlayerData;
 }
 
 interface PokemonCardResponse {
@@ -106,6 +136,14 @@ const FALLBACK_SETS: Record<string, Partial<PokemonSet>> = {
     releaseDate: '2024/03/22'
   }
 };
+
+/**
+ * Helper function to ensure JSON compatibility with Prisma
+ * This ensures that objects are properly serializable
+ */
+function ensureJsonCompatible<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data));
+}
 
 /**
  * Service for interacting with the Pokémon TCG API and managing card data
@@ -238,7 +276,7 @@ export class PokemonTcgService {
    */
   async getCard(id: string): Promise<PokemonCard> {
     const response = await this.makeRequest(`/cards/${id}`);
-    return (response as any).data;
+    return (response as { data: PokemonCard }).data;
   }
 
   /**
@@ -278,7 +316,7 @@ export class PokemonTcgService {
             updatedAt: new Date().toISOString(),
             images: {
               symbol: '',
-              logo: ''
+              logo: '',
             }
           });
         }
@@ -305,11 +343,11 @@ export class PokemonTcgService {
                 series: setData.series,
                 printedTotal: setData.printedTotal,
                 total: setData.total,
-                legalities: setData.legalities as any,
+                legalities: ensureJsonCompatible(setData.legalities),
                 ptcgoCode: setData.ptcgoCode,
                 releaseDate: setData.releaseDate,
                 updatedAt: setData.updatedAt,
-                images: setData.images as any,
+                images: ensureJsonCompatible(setData.images),
                 lastUpdated: new Date(),
               },
               create: {
@@ -318,11 +356,11 @@ export class PokemonTcgService {
                 series: setData.series,
                 printedTotal: setData.printedTotal,
                 total: setData.total,
-                legalities: setData.legalities as any,
+                legalities: ensureJsonCompatible(setData.legalities),
                 ptcgoCode: setData.ptcgoCode,
                 releaseDate: setData.releaseDate,
                 updatedAt: setData.updatedAt,
-                images: setData.images as any,
+                images: ensureJsonCompatible(setData.images),
                 lastUpdated: new Date(),
               },
             });
@@ -394,11 +432,11 @@ export class PokemonTcgService {
               series: setData.series,
               printedTotal: setData.printedTotal,
               total: setData.total,
-              legalities: setData.legalities as any,
+              legalities: ensureJsonCompatible(setData.legalities),
               ptcgoCode: setData.ptcgoCode,
               releaseDate: setData.releaseDate,
               updatedAt: setData.updatedAt,
-              images: setData.images as any,
+              images: ensureJsonCompatible(setData.images),
               lastUpdated: new Date(),
             }
           });
@@ -527,8 +565,8 @@ export class PokemonTcgService {
                     artist: cardData.artist,
                     rarity: cardData.rarity || 'Unknown',
                     nationalPokedexNumbers: cardData.nationalPokedexNumbers || [],
-                    images: cardData.images as any,
-                    tcgplayer: cardData.tcgplayer as any,
+                    images: ensureJsonCompatible(cardData.images),
+                    tcgplayer: ensureJsonCompatible(cardData.tcgplayer) as Prisma.InputJsonValue,
                     lastUpdated: new Date(),
                   },
                   create: {
@@ -544,8 +582,8 @@ export class PokemonTcgService {
                     artist: cardData.artist,
                     rarity: cardData.rarity || 'Unknown',
                     nationalPokedexNumbers: cardData.nationalPokedexNumbers || [],
-                    images: cardData.images as any,
-                    tcgplayer: cardData.tcgplayer as any,
+                    images: ensureJsonCompatible(cardData.images),
+                    tcgplayer: ensureJsonCompatible(cardData.tcgplayer) as Prisma.InputJsonValue,
                     lastUpdated: new Date(),
                   },
                 });
@@ -693,7 +731,7 @@ export class PokemonTcgService {
                   await prisma.card.update({
                     where: { id: card.id },
                     data: {
-                      tcgplayer: card.tcgplayer as any,
+                      tcgplayer: ensureJsonCompatible(card.tcgplayer) as Prisma.JsonValue,
                       lastUpdated: new Date(),
                     },
                   });

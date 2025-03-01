@@ -14,7 +14,7 @@ interface SetSyncResult {
 interface BatchSyncResult {
   success: boolean;
   sets: SetSyncResult[];
-  [key: string]: any; // For any additional properties
+  [key: string]: unknown;
 }
 
 /**

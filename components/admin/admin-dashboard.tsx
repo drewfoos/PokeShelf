@@ -160,7 +160,7 @@ export default function AdminDashboard() {
   const handleSyncSets = async () => {
     setLoading('syncSets');
     setOperationStartTime(Date.now());
-    const progressInterval = startProgressAnimation();
+    startProgressAnimation(); // Remove the assignment to progressInterval
     
     try {
       toast.info('Starting synchronization of all sets...');
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
     
     setLoading('syncSetCards');
     setOperationStartTime(Date.now());
-    const progressInterval = startProgressAnimation();
+    startProgressAnimation(); // Remove the assignment to progressInterval
     
     try {
       const selectedSetName = popularSets.find(s => s.id === finalSetId)?.name || finalSetId;
@@ -249,7 +249,7 @@ export default function AdminDashboard() {
   const handleSyncMcDonalds = async () => {
     setLoading('syncMcDonalds');
     setOperationStartTime(Date.now());
-    const progressInterval = startProgressAnimation();
+    startProgressAnimation(); // Remove the assignment to progressInterval
     
     try {
       toast.info("Starting sync for McDonald's promotional sets. This may take several minutes...");
@@ -293,7 +293,7 @@ export default function AdminDashboard() {
   const handleSyncRecent = async () => {
     setLoading('syncRecent');
     setOperationStartTime(Date.now());
-    const progressInterval = startProgressAnimation();
+    startProgressAnimation(); // Remove the assignment to progressInterval
     
     try {
       toast.info("Starting sync for recent sets. This may take several minutes...");
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
   const handleUpdatePrices = async () => {
     setLoading('updatePrices');
     setOperationStartTime(Date.now());
-    const progressInterval = startProgressAnimation();
+    startProgressAnimation(); // Remove the assignment to progressInterval
     
     try {
       toast.info("Starting price update. This may take several minutes...");
@@ -374,7 +374,7 @@ export default function AdminDashboard() {
   const handleCheckNewSets = async () => {
     setLoading('checkNewSets');
     setOperationStartTime(Date.now());
-    const progressInterval = startProgressAnimation();
+    startProgressAnimation(); // Remove the assignment to progressInterval
     
     try {
       toast.info("Checking for new sets...");
@@ -502,7 +502,7 @@ export default function AdminDashboard() {
     
     setLoading('syncBatch');
     setOperationStartTime(Date.now());
-    const progressInterval = startProgressAnimation();
+    startProgressAnimation(); // Remove the assignment to progressInterval
     
     try {
       toast.info(`Starting sync for ${selectedSets.length} sets. This may take a while...`);
