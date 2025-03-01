@@ -485,7 +485,7 @@ export class PokemonTcgService {
         // Try to get set data from the API
         const setResponse = await this.getSet(setId);
         setData = setResponse.data;
-      } catch (error) {
+      } catch (_error) {
         // If the set isn't in the API (like a new set), create a fallback
         if (FALLBACK_SETS[setId]) {
           console.log(`Set ${setId} not found in API, using fallback data`);
