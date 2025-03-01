@@ -42,14 +42,14 @@ const nextConfig: NextConfig = {
             value: `
               default-src 'self';
               script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.clerk.accounts.dev https://clerk.pokeshelf.com https://challenges.cloudflare.com https://cdnjs.cloudflare.com;
-              connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.dev https://api.clerk.dev https://api.pokemontcg.io https://*.mongodb-api.com;
+              connect-src 'self' https://*.clerk.accounts.dev https://*.clerk.dev https://api.clerk.dev https://api.pokemontcg.io https://*.mongodb-api.com https://clerk.pokeshelf.com;
               img-src 'self' data: https://images.pokemontcg.io https://img.clerk.com;
               worker-src 'self' blob:;
               style-src 'self' 'unsafe-inline';
               frame-src 'self' https://*.clerk.accounts.dev https://challenges.cloudflare.com;
               form-action 'self';
             `.replace(/\s{2,}/g, ' ').trim()
-          },
+          },          
         ],
       },
     ];
