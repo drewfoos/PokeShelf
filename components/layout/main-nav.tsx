@@ -47,13 +47,13 @@ const MainNav = () => {
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-6">
-              <Link
+              <SignedIn>
+                <Link
                 href="/sets"
                 className="text-sm font-medium transition-colors hover:text-primary"
-              >
+                >
                 Sets
-              </Link>
-              <SignedIn>
+                </Link>
                 <Link
                   href="/collection"
                   className="text-sm font-medium transition-colors hover:text-primary"
