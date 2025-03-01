@@ -46,11 +46,6 @@ async function getSetCards(
       filter.types = { has: filters.type }
     }
 
-    // Exclude "Unknown" rarity by default
-    if (!filters.rarity || filters.rarity === 'all') {
-      filter.rarity = { not: 'Unknown' }
-    }
-
     // Get cards and total count simultaneously
     const [cards, totalCount] = await Promise.all([
       prisma.card.findMany({
