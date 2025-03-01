@@ -10,9 +10,14 @@ const SiteFooter = () => {
           &copy; {new Date().getFullYear()} PokéTracker. All rights reserved.
         </p>
         <div className="flex gap-6 text-sm text-muted-foreground">
-          <Link href="/about" className="hover:text-foreground transition-colors">
+          <a
+            href="https://andrewdryfoos.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors"
+          >
             About
-          </Link>
+          </a>
           <Link href="/privacy" className="hover:text-foreground transition-colors">
             Privacy
           </Link>

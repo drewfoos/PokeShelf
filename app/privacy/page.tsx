@@ -132,7 +132,7 @@ export default function PrivacyPage() {
           <p>
             Depending on your location, you may have rights regarding your personal data, such as accessing, 
             updating, or deleting your information. To exercise these rights, please contact us at{' '}
-            <a href="mailto:contact@pokeshelf.com" className="text-primary hover:underline">contact@pokeshelf.com</a>.
+            <a href="dryfoosa@gmail.com" className="text-primary hover:underline">dryfoosa@gmail.com</a>.
           </p>
         </section>
         
@@ -174,7 +174,7 @@ export default function PrivacyPage() {
             If you have any questions about this Privacy Policy, please contact us at:
           </p>
           <p className="mt-2">
-            Email: <a href="mailto:contact@pokeshelf.com" className="text-primary hover:underline">contact@pokeshelf.com</a>
+            Email: <a href="dryfoosa@gmail.com" className="text-primary hover:underline">dryfoosa@gmail.com</a>
           </p>
         </section>
       </div>

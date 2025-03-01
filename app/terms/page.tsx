@@ -137,7 +137,7 @@ export default function TermsPage() {
             For any questions regarding these Terms, please contact us at:
           </p>
           <p className="mt-2">
-            Email: <a href="mailto:contact@pokeshelf.com" className="text-primary hover:underline">contact@pokeshelf.com</a>
+            Email: <a href="mailto:dryfoosa@gmail.com" className="text-primary hover:underline">dryfoosa@gmail.com</a>
           </p>
         </section>
       </div>
