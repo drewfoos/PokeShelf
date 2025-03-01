@@ -9,6 +9,36 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Gets the appropriate price for a card based on the card properties
+ */
+export function getCardPrice(tcgplayer: any, isFoil: boolean = false, isFirstEdition: boolean = false): number | null {
+  if (!tcgplayer || !tcgplayer.prices) return null;
+  
+  const prices = tcgplayer.prices;
+  
+  // Try to get the appropriate price based on card properties
+  if (isFirstEdition && prices['1stEditionHolofoil']) {
+    return prices['1stEditionHolofoil'].market || null;
+  }
+  
+  if (isFoil && prices.holofoil) {
+    return prices.holofoil.market || null;
+  }
+  
+  if (isFoil && prices.reverseHolofoil) {
+    return prices.reverseHolofoil.market || null;
+  }
+  
+  // Default to normal price
+  if (prices.normal) {
+    return prices.normal.market || null;
+  }
+  
+  // If no appropriate price is found, return null
+  return null;
+}
+
+/**
  * Formats a price as a currency string
  */
 export function formatPrice(price: number | null | undefined, currency = 'USD'): string {
