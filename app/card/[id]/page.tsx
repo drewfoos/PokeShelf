@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { ChevronLeft, DollarSign, Heart, TrendingUp, Info, Sparkles, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, Heart, TrendingUp, Info, Sparkles } from 'lucide-react';
 import { auth } from "@clerk/nextjs/server";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import prisma from '@/lib/prisma';
@@ -187,6 +187,7 @@ export default async function CardDetailPage({
                 fill
                 className="object-contain p-2 transition-transform duration-700"
                 priority
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             ) : smallImage ? (
               <Image
@@ -195,6 +196,7 @@ export default async function CardDetailPage({
                 fill
                 className="object-contain p-2 transition-transform duration-700"
                 priority
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -209,14 +211,6 @@ export default async function CardDetailPage({
 
           {/* Action Buttons */}
           <div className="mt-8 flex flex-col w-full max-w-md space-y-3">
-            <Button variant="outline" className="flex items-center gap-2 h-12 shadow-sm hover:shadow-md transition-shadow" asChild>
-              <a href={tcgplayerDirectUrl} target="_blank" rel="noopener noreferrer">
-                <DollarSign className="h-5 w-5 text-primary" />
-                <span className="font-medium">Check Price on TCGPlayer</span>
-                <ArrowUpRight className="h-4 w-4 ml-1 opacity-70" />
-              </a>
-            </Button>
-            
             {userId ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
@@ -359,7 +353,7 @@ export default async function CardDetailPage({
               </div>
               
               <div className="mt-4 p-3 bg-primary/5 border border-primary/10 rounded-lg text-sm text-muted-foreground">
-                <p>Prices as of {new Date(card.lastUpdated).toLocaleDateString()}. For current market prices, check TCGPlayer.</p>
+                <p>Prices as of {new Date(card.lastUpdated).toLocaleDateString()}. For current prices, check <a href={tcgplayerDirectUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">TCGPlayer</a>.</p>
               </div>
             </Card>
           )}
