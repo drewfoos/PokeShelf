@@ -137,8 +137,9 @@ export default async function CardDetailPage({
   const marketPrice = getCardPrice(tcgplayer);
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-4">
+    <div className="container mx-auto max-w-6xl">
+      {/* Header with back button and gradient section */}
+      <div className="pt-4 pb-1 mb-0">
         <Link 
           href={`/sets/${card.setId}`}
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -149,7 +150,7 @@ export default async function CardDetailPage({
       </div>
 
       {/* Header with card name, set info, and type */}
-      <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-xl p-6 mb-8">
+      <div className="bg-gradient-to-r from-primary/10 to-transparent rounded-xl p-6 mb-8 mt-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{card.name}</h1>
@@ -176,7 +177,7 @@ export default async function CardDetailPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 pb-12">
         {/* Card Image and Direct Actions */}
         <div className="flex flex-col items-center">
           <div className="w-full max-w-md relative aspect-[3/4] rounded-xl overflow-hidden shadow-2xl hover:shadow-3xl transition-shadow duration-300 border border-primary/10 group">
@@ -306,7 +307,7 @@ export default async function CardDetailPage({
                 <h2 className="text-xl font-bold">Price Information</h2>
               </div>
               
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {prices.normal?.market && (
                   <div className="bg-muted/40 rounded-lg p-4 backdrop-blur-sm">
                     <div className="text-sm text-muted-foreground mb-1">Normal</div>
