@@ -41,6 +41,9 @@ export default function RootLayout({
       }}
     >
       <html lang="en">
+        <head>
+          <meta name='impact-site-verification' content='ac021e01-0456-4678-8d74-04bbea34ed92' />
+        </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground`}>
           <MainNav />
           
