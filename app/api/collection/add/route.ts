@@ -1,4 +1,4 @@
-// app/api/collection/add/route.ts
+// app/api/collection/add/route.ts - Updated version
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
@@ -15,7 +15,15 @@ export async function POST(request: NextRequest) {
    
     // Parse the request body
     const body = await request.json();
-    const { cardId, quantity = 1, condition = "Near Mint", isFoil = false, isFirstEdition = false, purchasePrice } = body;
+    const { 
+      cardId, 
+      quantity = 1, 
+      condition = "Near Mint", 
+      isFoil = false, 
+      isFirstEdition = false, 
+      purchasePrice,
+      variant = "normal" // New field to track specific variant types
+    } = body;
    
     if (!cardId) {
       return NextResponse.json({ error: "Card ID is required" }, { status: 400 });
@@ -92,15 +100,16 @@ export async function POST(request: NextRequest) {
       collectionId = dbUser.collection.id;
     }
    
-    // Check if the card already exists in the collection
+    // Check if the card already exists with the same variant in the collection
     const existingUserCard = await prisma.userCard.findUnique({
-      where: {
-        userCard_collection_card_unique: {
-          collectionId: collectionId,
-          cardId: cardId
-        }
-      }
-    });
+        where: {
+          userCard_collection_card_variant_unique: {
+            collectionId: collectionId,
+            cardId: cardId,
+            variant: variant, // include variant here
+          },
+        },
+      });
    
     // Start a transaction to update everything
     const result = await prisma.$transaction(async (tx) => {
@@ -115,7 +124,8 @@ export async function POST(request: NextRequest) {
             condition: condition,
             isFoil: isFoil,
             isFirstEdition: isFirstEdition,
-            purchasePrice: purchasePrice || existingUserCard.purchasePrice
+            purchasePrice: purchasePrice || existingUserCard.purchasePrice,
+            variant: variant // Ensure variant is saved
           }
         });
        
@@ -137,7 +147,8 @@ export async function POST(request: NextRequest) {
             isFoil: isFoil,
             isFirstEdition: isFirstEdition,
             purchasePrice: purchasePrice,
-            purchaseDate: new Date()
+            purchaseDate: new Date(),
+            variant: variant // Save the variant
           }
         });
        
