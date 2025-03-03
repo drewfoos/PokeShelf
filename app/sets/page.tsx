@@ -12,32 +12,38 @@ async function getAllSetsGroupedBySeries() {
   try {
     const sets = await prisma.set.findMany({
       orderBy: [
-        { series: 'asc' },
-        { releaseDate: 'desc' },
+        { releaseDate: 'desc' }, // Sort all sets by release date desc
       ],
     });
     
-    // Group the sets by their series
-    const groupedSets = sets.reduce((groups, set) => {
-      const series = set.series || 'Other';
-      if (!groups[series]) {
-        groups[series] = [];
-      }
-      groups[series].push(set);
-      return groups;
-    }, {} as Record<string, typeof sets>);
+    // Define proper types for our grouped sets and dates
+    const groupedSets: Record<string, typeof sets> = {};
+    const seriesNewestDates: Record<string, Date> = {}; // Track the newest date for each series
     
-    // Sort the series keys to ensure consistent order
-    // Move some important series to the top
-    const sortedSeries = Object.keys(groupedSets).sort((a, b) => {
-      const prioritySeries = ['Scarlet & Violet', 'Sword & Shield', 'Sun & Moon', 'XY'];
-      const aPriority = prioritySeries.indexOf(a);
-      const bPriority = prioritySeries.indexOf(b);
+    sets.forEach(set => {
+      const series = set.series || 'Other';
       
-      if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
-      if (aPriority !== -1) return -1;
-      if (bPriority !== -1) return 1;
-      return a.localeCompare(b);
+      // Initialize the group and date tracking if needed
+      if (!groupedSets[series]) {
+        groupedSets[series] = [];
+        seriesNewestDates[series] = new Date(set.releaseDate);
+      } 
+      // Update the newest date if this set is newer
+      else if (new Date(set.releaseDate) > seriesNewestDates[series]) {
+        seriesNewestDates[series] = new Date(set.releaseDate);
+      }
+      
+      groupedSets[series].push(set);
+    });
+    
+    // Sort series by their most recent set's release date
+    const sortedSeries = Object.keys(groupedSets).sort((a, b) => {
+      // Always put 'Other' at the end regardless of date
+      if (a === 'Other') return 1;
+      if (b === 'Other') return -1;
+      
+      // Sort by newest set date in each series (descending order)
+      return seriesNewestDates[b].getTime() - seriesNewestDates[a].getTime();
     });
     
     return { groupedSets, sortedSeries };

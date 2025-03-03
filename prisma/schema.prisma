@@ -120,6 +120,8 @@ model UserCard {
   purchasePrice Float?
   notes         String?
   forTrade      Boolean   @default(false)
+  // Add the variant field to track different card variants
+  variant       String    @default("normal")  // Options: normal, holofoil, reverseHolofoil, masterBall, pokeBall, etc.
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
@@ -127,7 +129,8 @@ model UserCard {
   collection    UserCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   card          Card      @relation(fields: [cardId], references: [id])
 
-  @@unique([collectionId, cardId], name: "userCard_collection_card_unique")
+  // Update the unique constraint to include variant
+  @@unique([collectionId, cardId, variant], name: "userCard_collection_card_variant_unique")
   @@index([cardId], name: "userCard_cardId_idx")
 }
 

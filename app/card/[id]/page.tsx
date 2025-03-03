@@ -9,7 +9,7 @@ import prisma from '@/lib/prisma';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import CollectionButton from '@/components/collection/collection-button';
+import CollectionVariantsButton from '@/components/collection/collection-variants-button';
 import WishlistButton from '@/components/wishlist/wishlist-button';
 import { formatPrice } from '@/lib/utils';
 
@@ -36,6 +36,41 @@ interface TCGPlayerData {
   url: string;
   updatedAt: string;
   prices?: TCGPlayerPrices;
+}
+
+interface CardImage {
+  small?: string;
+  large?: string;
+  [key: string]: string | undefined;
+}
+
+interface CardData {
+  id: string;
+  name: string;
+  number: string;
+  supertype: string;
+  subtypes: string[];
+  hp: string | null;
+  types: string[];
+  setId: string;
+  setName: string;
+  artist: string | null;
+  rarity: string;
+  nationalPokedexNumbers: number[];
+  images: CardImage | null;
+  tcgplayer: TCGPlayerData | null;
+  lastUpdated: Date;
+}
+
+interface SetData {
+  id: string;
+  name: string;
+  series: string;
+  releaseDate: string;
+  images?: {
+    logo?: string;
+    symbol?: string;
+  };
 }
 
 // Add this utility function to extract price data
@@ -66,7 +101,7 @@ function getCardPrice(tcgplayer: TCGPlayerData | null, isFoil: boolean = false, 
   return null;
 }
 
-async function getCard(id: string) {
+async function getCard(id: string): Promise<CardData | null> {
   try {
     const card = await prisma.card.findUnique({
       where: { id },
@@ -76,9 +111,33 @@ async function getCard(id: string) {
       return null;
     }
 
-    return card;
+    return card as unknown as CardData;
   } catch (error) {
     console.error(`Error fetching card ${id}:`, error);
+    return null;
+  }
+}
+
+async function getSet(id: string): Promise<SetData | null> {
+  try {
+    const set = await prisma.set.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        series: true,
+        releaseDate: true,
+        images: true
+      }
+    });
+
+    if (!set) {
+      return null;
+    }
+
+    return set as unknown as SetData;
+  } catch (error) {
+    console.error(`Error fetching set ${id}:`, error);
     return null;
   }
 }
@@ -112,24 +171,21 @@ export default async function CardDetailPage({
     notFound();
   }
 
+  // Get the set data for release date information (needed for variant detection)
+  const set = await getSet(card.setId);
+  if (!set) {
+    console.warn(`Set ${card.setId} not found for card ${card.id}`);
+  }
+
   // Extract image URLs
-  const images = card.images && typeof card.images === 'object' && card.images !== null 
-    ? card.images 
-    : {};
-    
-  const largeImage = 'large' in images && typeof images.large === 'string' 
-    ? images.large 
-    : null;
-    
-  const smallImage = 'small' in images && typeof images.small === 'string' 
-    ? images.small 
-    : null;
+  const largeImage = card.images?.large || null;
+  const smallImage = card.images?.small || null;
 
   // Get the direct TCGPlayer URL from the prices API server-side
   const tcgplayerDirectUrl = await getDirectTCGPlayerUrl(card.id);
 
   // Cast the tcgplayer data to your interface
-  const tcgplayer = card.tcgplayer ? (card.tcgplayer as unknown as TCGPlayerData) : null;
+  const tcgplayer = card.tcgplayer;
   const prices = tcgplayer?.prices || {};
   const hasPrice = !!(prices.normal || prices.holofoil || prices.reverseHolofoil || prices['1stEditionHolofoil']);
   
@@ -215,10 +271,15 @@ export default async function CardDetailPage({
             {userId ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  <CollectionButton 
-                    cardId={card.id} 
-                    variant="default"
-                    size="lg"
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  <CollectionVariantsButton 
+                    cardId={card.id}
+                    cardName={card.name}
+                    setId={card.setId}
+                    setName={card.setName}
+                    releaseDate={set?.releaseDate || "2000/01/01"} // Fallback date if set not found
+                    cardImage={largeImage || smallImage || undefined}
+                    tcgplayer={card.tcgplayer as any}
                   />
                   <WishlistButton
                     cardId={card.id}

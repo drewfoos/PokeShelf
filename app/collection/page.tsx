@@ -2,17 +2,40 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
-import Image from "next/image";
 import { formatPrice } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronRight, Plus, Search } from "lucide-react";
+import CollectionCardItem from '@/components/collection/collection-card-item';
 
-// Updated type definitions to match the data shape returned by Prisma
-interface CardImages {
+// Updated type definitions with proper typing
+interface CardImage {
   small?: string;
-  [key: string]: unknown;
+  large?: string;
+  [key: string]: string | undefined;
+}
+
+interface TCGPlayerPriceData {
+  low: number;
+  mid: number;
+  high: number;
+  market: number;
+  directLow: number | null;
+}
+
+interface TCGPlayerPrices {
+  normal?: TCGPlayerPriceData;
+  holofoil?: TCGPlayerPriceData;
+  reverseHolofoil?: TCGPlayerPriceData;
+  '1stEditionHolofoil'?: TCGPlayerPriceData;
+  [key: string]: TCGPlayerPriceData | undefined;
+}
+
+interface TCGPlayerData {
+  url: string;
+  updatedAt: string;
+  prices?: TCGPlayerPrices;
 }
 
 interface CardType {
@@ -28,16 +51,25 @@ interface CardType {
   artist: string | null;
   rarity: string;
   nationalPokedexNumbers: number[];
-  images?: CardImages | null; // allow null value
-  tcgplayer: Record<string, unknown>;
+  images: CardImage | null;
+  tcgplayer: TCGPlayerData | null;
   lastUpdated: Date;
 }
 
-interface UserCardType {
+interface CardVariant {
   id: string;
+  cardId: string;
   quantity: number;
   condition: string;
+  variant: string;
+  isFoil: boolean;
+  isFirstEdition?: boolean;
+  purchasePrice?: number | null;
+}
+
+interface GroupedCardType {
   card: CardType;
+  variants: CardVariant[];
 }
 
 // This page is protected by Clerk middleware
@@ -128,24 +160,47 @@ async function getUserCollection() {
       console.log(`Collection created successfully for user: ${user.id}`);
     }
     
-    // Get recent cards in the collection - ensure collection exists
-    const recentCards = user.collection ? await prisma.userCard.findMany({
+    // Get all user cards with variants
+    const userCards = user.collection ? await prisma.userCard.findMany({
       where: { 
         collectionId: user.collection.id 
       },
       orderBy: { 
         updatedAt: "desc" 
       },
-      take: 10,
       include: {
         card: true,
       },
     }) : [];
+
+    // Group cards by cardId to support multiple variants of the same card
+    const groupedCards: GroupedCardType[] = [];
+    const cardMap = new Map<string, GroupedCardType>();
+    
+    userCards.forEach(userCard => {
+      if (!cardMap.has(userCard.cardId)) {
+        cardMap.set(userCard.cardId, {
+          card: userCard.card,
+          variants: [userCard as unknown as CardVariant]
+        });
+      } else {
+        cardMap.get(userCard.cardId)?.variants.push(userCard as unknown as CardVariant);
+      }
+    });
+    
+    // Convert map to array for rendering
+    cardMap.forEach(item => {
+      groupedCards.push(item);
+    });
+    
+    // Get the 10 most recently updated cards for the recent tab
+    const recentCards = groupedCards.slice(0, 10);
     
     return {
       user,
       collection: user.collection,
       recentCards,
+      groupedCards
     };
   } catch (error) {
     console.error("Error fetching or creating user collection:", error);
@@ -176,7 +231,7 @@ export default async function CollectionPage() {
     );
   }
   
-  const { collection, recentCards } = data;
+  const { collection, recentCards, groupedCards } = data;
 
   // Make sure collection is defined (TypeScript safety)
   if (!collection) {
@@ -240,6 +295,7 @@ export default async function CollectionPage() {
       <Tabs defaultValue="recent" className="w-full">
         <TabsList>
           <TabsTrigger value="recent">Recently Added</TabsTrigger>
+          <TabsTrigger value="all">All Cards</TabsTrigger>
           <TabsTrigger value="sets">By Set</TabsTrigger>
         </TabsList>
         
@@ -247,10 +303,12 @@ export default async function CollectionPage() {
           {recentCards.length > 0 ? (
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {(recentCards as UserCardType[]).map((userCard) => (
+                {recentCards.map((item) => (
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   <CollectionCardItem 
-                    key={userCard.id} 
-                    userCard={userCard} 
+                    key={item.card.id} 
+                    card={item.card as any} 
+                    variants={item.variants as any}
                   />
                 ))}
               </div>
@@ -269,6 +327,23 @@ export default async function CollectionPage() {
           )}
         </TabsContent>
         
+        <TabsContent value="all" className="mt-6">
+          {groupedCards.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {groupedCards.map((item) => (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                <CollectionCardItem 
+                  key={item.card.id} 
+                  card={item.card as any} 
+                  variants={item.variants as any}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyCollection />
+          )}
+        </TabsContent>
+        
         <TabsContent value="sets" className="mt-6">
           <div className="text-center py-12 border rounded-lg bg-card">
             <h3 className="text-xl font-medium mb-2">Set view coming soon</h3>
@@ -279,53 +354,6 @@ export default async function CollectionPage() {
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-function CollectionCardItem({ userCard }: { userCard: UserCardType }) {
-  const { card, quantity, condition } = userCard;
-  
-  // Extract image URLs from the card images object
-  const images = card.images && typeof card.images === "object" ? card.images : {};
-  const smallImage = images && "small" in images && typeof images.small === "string" ? images.small : null;
-  
-  return (
-    <Link href={`/card/${card.id}`}>
-      <Card className="overflow-hidden h-full transition-all hover:shadow-md">
-        <div className="p-2">
-          <div className="aspect-[3/4] relative rounded overflow-hidden">
-            {smallImage ? (
-              <Image
-                src={smallImage}
-                alt={card.name}
-                fill
-                className="object-contain"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-muted">
-                <span className="text-muted-foreground">No image</span>
-              </div>
-            )}
-            
-            {/* Quantity Badge */}
-            <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-              {quantity}
-            </div>
-          </div>
-        </div>
-        
-        <CardContent className="p-3 pt-1">
-          <h3 className="font-medium text-sm truncate" title={card.name}>
-            {card.name}
-          </h3>
-          <div className="flex justify-between items-center mt-1 text-xs text-muted-foreground">
-            <span>{card.setName}</span>
-            <span>{condition}</span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
   );
 }
 

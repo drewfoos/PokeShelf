@@ -1,4 +1,4 @@
-// app/api/collection/remove/route.ts
+// app/api/collection/remove/route.ts - Updated for variant support
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
@@ -15,89 +15,43 @@ export async function POST(request: NextRequest) {
    
     // Parse the request body
     const body = await request.json();
-    const { cardId, quantity = 1, removeAll = false } = body;
+    const { 
+      cardId, 
+      quantity = 1, 
+      removeAll = false,
+      variant = 'normal' // Default to normal if not specified
+    } = body;
    
     if (!cardId) {
       return NextResponse.json({ error: "Card ID is required" }, { status: 400 });
     }
    
-    // Get the user record from our database or create it if it doesn't exist
+    // Get the user record from our database
     let dbUser = await prisma.user.findUnique({
       where: { clerkId: userId },
       include: { collection: true }
     });
    
-    // If user doesn't exist in our database, create them
-    if (!dbUser) {
-      // Extract user info from Clerk
-      const primaryEmail =
-        user.emailAddresses && user.emailAddresses.length > 0
-          ? user.emailAddresses[0].emailAddress
-          : "";
-      
-      const name =
-        user.firstName && user.lastName
-          ? `${user.firstName} ${user.lastName}`.trim()
-          : user.username || "User";
-      
-      // Create the user in our database
-      dbUser = await prisma.user.create({
-        data: {
-          clerkId: userId,
-          email: primaryEmail,
-          name: name,
-          imageUrl: user.imageUrl,
-          // Also create an empty collection and wishlist for the user
-          collection: {
-            create: {
-              totalCards: 0,
-              uniqueCards: 0,
-              estimatedValue: 0
-            }
-          },
-          wishlist: {
-            create: {}
-          }
-        },
-        include: { collection: true }
-      });
-      
-      console.log(`User created during remove card operation with ID: ${userId}`);
-      
-      // Since we just created the user, they won't have any cards to remove
-      return NextResponse.json({ error: "Card not found in collection" }, { status: 404 });
-    }
-   
-    // Check if user has a collection
-    if (!dbUser.collection) {
-      // Create the collection if it doesn't exist
-      await prisma.userCollection.create({
-        data: {
-          user: { connect: { id: dbUser.id } },
-          totalCards: 0,
-          uniqueCards: 0,
-          estimatedValue: 0
-        }
-      });
-      
-      // Since we just created the collection, there won't be any cards to remove
+    // If user doesn't exist or doesn't have a collection, there's nothing to remove
+    if (!dbUser || !dbUser.collection) {
       return NextResponse.json({ error: "Card not found in collection" }, { status: 404 });
     }
    
     const collectionId = dbUser.collection.id;
    
-    // Check if the card exists in the collection
+    // Check if the specific variant exists in the collection
     const userCard = await prisma.userCard.findUnique({
       where: {
-        userCard_collection_card_unique: {
+        userCard_collection_card_variant_unique: {
           collectionId: collectionId,
-          cardId: cardId
+          cardId: cardId,
+          variant: variant
         }
       }
     });
    
     if (!userCard) {
-      return NextResponse.json({ error: "Card not found in collection" }, { status: 404 });
+      return NextResponse.json({ error: "Card variant not found in collection" }, { status: 404 });
     }
    
     // Determine how many cards to remove
@@ -107,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Start a transaction
     const result = await prisma.$transaction(async (tx) => {
       if (newQuantity <= 0 || removeAll) {
-        // Remove the card entirely
+        // Remove the card variant entirely
         await tx.userCard.delete({
           where: { id: userCard.id }
         });
@@ -145,8 +99,9 @@ export async function POST(request: NextRequest) {
    
     return NextResponse.json({
       success: true,
-      message: result.removed ? "Card removed from collection" : "Card quantity updated",
-      newQuantity: result.newQuantity
+      message: result.removed ? "Card variant removed from collection" : "Card variant quantity updated",
+      newQuantity: result.newQuantity,
+      variant: variant
     });
   } catch (error) {
     console.error("Error removing card from collection:", error);
