@@ -86,12 +86,12 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
           <React.Fragment key={link.href}>
             {isMobile ? (
               <SheetClose asChild>
-                <Link href={link.href} className={commonLinkClass}>
+                <Link href={link.href} className={commonLinkClass} prefetch={false}>
                   {link.label}
                 </Link>
               </SheetClose>
             ) : (
-              <Link href={link.href} className={commonLinkClass}>
+              <Link href={link.href} className={commonLinkClass} prefetch={false}>
                 {link.label}
               </Link>
             )}

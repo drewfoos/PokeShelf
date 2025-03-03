@@ -95,7 +95,7 @@ const HeroSection = async () => {
                 </Button>
               </Link>
             </SignedIn>
-            <Link href="/sets">
+            <Link href="/sets" prefetch={false}>
               <Button size="lg" variant="outline" className="shadow-sm hover:shadow-md">
                 Browse Sets
               </Button>
@@ -123,7 +123,7 @@ const HeroSection = async () => {
                       }
                       
                       return (
-                        <Link href={`/card/${card.id}`} key={card.id}>
+                        <Link href={`/card/${card.id}`} prefetch={false} key={card.id}>
                           <div 
                             className="w-24 h-32 rounded-lg bg-white shadow-md transform transition-transform hover:scale-105 overflow-hidden"
                             style={{ 

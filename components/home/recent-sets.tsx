@@ -87,6 +87,7 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
           <h2 className="text-3xl font-bold tracking-tight">Latest Sets</h2>
           <Link 
             href="/sets" 
+            prefetch={false}
             className="group inline-flex items-center text-primary hover:text-primary/80 transition-colors"
           >
             View All Sets
@@ -96,7 +97,7 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           {displaySets.map((set) => (
-            <Link href={`/sets/${set.id}`} key={set.id} className="block">
+            <Link href={`/sets/${set.id}`} prefetch={false} key={set.id} className="block">
               <div className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 border border-border/50 h-full">
                 <div className="aspect-square relative bg-gradient-to-br from-primary/5 to-transparent p-4 flex items-center justify-center">
                   {/* Handle images safely, since it's a JsonValue */}

@@ -18,10 +18,10 @@ const SiteFooter = () => {
           >
             About
           </a>
-          <Link href="/privacy" className="hover:text-foreground transition-colors">
+          <Link href="/privacy" prefetch={false} className="hover:text-foreground transition-colors">
             Privacy
           </Link>
-          <Link href="/terms" className="hover:text-foreground transition-colors">
+          <Link href="/terms" prefetch={false} className="hover:text-foreground transition-colors">
             Terms
           </Link>
         </div>
