@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Prisma } from '@prisma/client';
 
 // Tell Next.js this should be a dynamic page that's not cached
-export const dynamic = 'force-dynamic';
+export const revalidate = 86400;
 
 interface SearchPageProps {
   searchParams: Promise<{

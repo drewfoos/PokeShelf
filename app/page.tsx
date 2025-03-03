@@ -6,7 +6,7 @@ import RecentSets from '@/components/home/recent-sets';
 import CTASection from '@/components/home/cta-section';
 
 // Make this page dynamic to ensure we get fresh data each time
-export const dynamic = 'force-dynamic';
+export const revalidate = 86400;
 
 async function getRecentSets() {
   try {

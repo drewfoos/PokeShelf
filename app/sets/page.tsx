@@ -4,8 +4,8 @@ import Image from 'next/image';
 import prisma from '@/lib/prisma';
 import { ChevronLeft } from 'lucide-react';
 
-// Make this page dynamic to get fresh data
-export const dynamic = 'force-dynamic';
+
+export const revalidate = 604800;
 
 // Get all sets grouped by series
 async function getAllSetsGroupedBySeries() {
@@ -94,10 +94,11 @@ export default async function SetsPage() {
                         <Image 
                           src={set.images.logo}
                           alt={`${set.name} logo`}
-                          sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-                          priority={false}
+                          sizes="(max-width: 640px) 45vw, (max-width: 768px) 30vw, 200px"
                           fill
                           className="object-contain"
+                          quality={75}
+                          loading="lazy"
                         />
                       </div>
                     ) : (
@@ -117,6 +118,7 @@ export default async function SetsPage() {
                           width={32}
                           height={32}
                           className="object-contain"
+                          unoptimized
                         />
                       </div>
                     )}

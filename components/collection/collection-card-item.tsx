@@ -1,3 +1,4 @@
+// components/collection/collection-card-item.tsx
 'use client';
 
 import React from 'react';
@@ -7,10 +8,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice } from "@/lib/utils";
 
-// Types for collection data
+// Types (should match your main app types)
+interface CardImage {
+  small?: string;
+  large?: string;
+  [key: string]: string | undefined;
+}
+
+interface CardType {
+  id: string;
+  name: string;
+  setName: string;
+  images: CardImage | null;
+  // Other fields that you use in this component
+  tcgplayer?: any;
+}
+
 interface CardVariant {
   id: string;
-  cardId: string;
   quantity: number;
   condition: string;
   variant: string;
@@ -18,55 +33,16 @@ interface CardVariant {
   purchasePrice?: number | null;
 }
 
-interface CardType {
-  id: string;
-  name: string;
-  number: string;
-  setId: string;
-  setName: string;
-  images: {
-    small?: string;
-    [key: string]: any;
-  } | null;
-  tcgplayer?: {
-    prices?: {
-      normal?: { market: number };
-      holofoil?: { market: number };
-      reverseHolofoil?: { market: number };
-      [key: string]: any;
-    };
-    [key: string]: any;
-  };
-}
-
-interface CollectionCardProps {
+interface CollectionCardItemProps {
   card: CardType;
   variants: CardVariant[];
 }
 
-// Helper to get variant display information
-function getVariantDisplayInfo(variantType: string) {
-  switch (variantType) {
-    case 'normal':
-      return { label: 'Regular', color: 'bg-gray-200 text-gray-800' };
-    case 'holofoil':
-      return { label: 'Holo', color: 'bg-blue-500 text-white' };
-    case 'reverseHolofoil':
-      return { label: 'Reverse Holo', color: 'bg-purple-500 text-white' };
-    case 'masterBall':
-      return { label: 'Master Ball', color: 'bg-indigo-700 text-white' };
-    case 'pokeBall':
-      return { label: 'Poké Ball', color: 'bg-red-500 text-white' };
-    default:
-      return { label: variantType, color: 'bg-gray-500 text-white' };
-  }
-}
-
 // Collection Card component that handles multiple variants
-export default function CollectionCardItem({ card, variants }: CollectionCardProps) {
+export default function CollectionCardItem({ card, variants }: CollectionCardItemProps) {
   // Extract image URL from the card images object
   const smallImage = card.images && typeof card.images === "object" ? 
-    (card.images.small as string | undefined) : 
+    card.images.small : 
     undefined;
   
   // Total quantity across all variants
@@ -106,7 +82,9 @@ export default function CollectionCardItem({ card, variants }: CollectionCardPro
                 alt={card.name}
                 fill
                 className="object-contain"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 200px"
+                quality={75}
+                loading="lazy"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-muted">
@@ -136,16 +114,16 @@ export default function CollectionCardItem({ card, variants }: CollectionCardPro
           {variants.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
               {variants.map((variant) => {
-                const { label, color } = getVariantDisplayInfo(variant.variant);
+                const displayInfo = getVariantDisplayInfo(variant.variant);
                 return (
                   <Badge 
                     key={variant.id} 
                     variant="outline" 
-                    className={`${color} text-xs`}
+                    className={`${displayInfo.color} text-xs`}
                   >
-                    {label} ({variant.quantity})
+                    {displayInfo.label} ({variant.quantity})
                   </Badge>
-                )
+                );
               })}
             </div>
           )}
@@ -153,4 +131,22 @@ export default function CollectionCardItem({ card, variants }: CollectionCardPro
       </Card>
     </Link>
   );
+}
+
+// Helper to get variant display information
+function getVariantDisplayInfo(variantType: string) {
+  switch (variantType) {
+    case 'normal':
+      return { label: 'Regular', color: 'bg-gray-200 text-gray-800' };
+    case 'holofoil':
+      return { label: 'Holo', color: 'bg-blue-500 text-white' };
+    case 'reverseHolofoil':
+      return { label: 'Reverse Holo', color: 'bg-purple-500 text-white' };
+    case 'masterBall':
+      return { label: 'Master Ball', color: 'bg-indigo-700 text-white' };
+    case 'pokeBall':
+      return { label: 'Poké Ball', color: 'bg-red-500 text-white' };
+    default:
+      return { label: variantType, color: 'bg-gray-500 text-white' };
+  }
 }

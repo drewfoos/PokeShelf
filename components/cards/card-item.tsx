@@ -45,6 +45,8 @@ const CardItem: React.FC<CardItemProps> = ({ card }) => {
               className="object-contain p-2"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               priority={false}
+              quality={75}
+              loading="lazy"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-muted">

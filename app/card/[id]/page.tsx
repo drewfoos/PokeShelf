@@ -13,8 +13,8 @@ import CollectionVariantsButton from '@/components/collection/collection-variant
 import WishlistButton from '@/components/wishlist/wishlist-button';
 import { formatPrice } from '@/lib/utils';
 
-// Make this page dynamic
-export const dynamic = 'force-dynamic';
+
+export const revalidate = 604800;
 
 // Define interfaces for TCGPlayer data
 interface TCGPlayerPriceData {
@@ -239,21 +239,23 @@ export default async function CardDetailPage({
           <div className="w-full max-w-md relative aspect-[3/4] rounded-xl overflow-hidden shadow-2xl hover:shadow-3xl transition-shadow duration-300 border border-primary/10 group">
             {largeImage ? (
               <Image
-                src={largeImage}
-                alt={card.name}
-                fill
-                className="object-contain p-2 transition-transform duration-700"
-                priority
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
+              src={largeImage}
+              alt={card.name}
+              fill
+              className="object-contain p-2 transition-transform duration-700"
+              priority={true} // Keep priority since this is the main content
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px"
+              quality={75}
+            />
             ) : smallImage ? (
               <Image
                 src={smallImage}
                 alt={card.name}
                 fill
                 className="object-contain p-2 transition-transform duration-700"
-                priority
+                priority={true}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                quality={75}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-muted">

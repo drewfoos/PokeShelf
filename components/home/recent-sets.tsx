@@ -106,9 +106,11 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
                       <Image 
                         src={set.images.logo}
                         alt={`${set.name} logo`}
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                        sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 300px"
                         fill
                         className="object-contain"
+                        quality={75}
+                        loading="lazy"
                       />
                     </div>
                   ) : (
@@ -129,6 +131,7 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
                         width={32}
                         height={32}
                         className="object-contain"
+                        unoptimized
                       />
                     </div>
                   )}

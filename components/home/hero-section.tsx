@@ -138,9 +138,9 @@ const HeroSection = async () => {
                                   alt={card.name}
                                   fill
                                   className="object-contain p-0.5"
-                                  sizes="(max-width: 768px) 96px, 96px"
-                                  priority={i < 6} // Load first 6 cards with priority
-                                  quality={85} // Higher quality for better image sharpness
+                                  sizes="96px"
+                                  priority={i < 3} // Load first 3 cards with priority
+                                  quality={75}
                                 />
                               </div>
                             ) : (

@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button'
 import { FilterControls } from './filter-controls'
 import { Prisma } from '@prisma/client'
 
-// Make this page dynamic to get fresh data
-export const dynamic = 'force-dynamic'
+
+export const revalidate = 604800;
 
 // Fetch a specific Set from the database
 async function getSet(id: string) {
@@ -202,7 +202,9 @@ export default async function SetDetailPage({
                     alt={`${set.name} logo`}
                     fill
                     className="object-contain"
-                    priority
+                    priority={true}
+                    sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 400px"
+                    quality={75}
                   />
                 </div>
               ) : (
@@ -226,6 +228,7 @@ export default async function SetDetailPage({
                       width={32}
                       height={32}
                       className="object-contain"
+                      unoptimized
                     />
                   </div>
                 )}
