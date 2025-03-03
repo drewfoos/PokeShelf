@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// app/collection/page.tsx
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
@@ -72,7 +74,7 @@ interface GroupedCardType {
   variants: CardVariant[];
 }
 
-// This page is protected by Clerk middleware
+// This page needs to be dynamic since it shows user-specific data
 export const dynamic = "force-dynamic";
 
 async function getUserCollection() {
@@ -178,9 +180,16 @@ async function getUserCollection() {
     const cardMap = new Map<string, GroupedCardType>();
     
     userCards.forEach(userCard => {
+      // Properly cast the Prisma JSON to our expected types
+      const typedCard: CardType = {
+        ...userCard.card,
+        images: userCard.card.images as unknown as CardImage | null,
+        tcgplayer: userCard.card.tcgplayer as unknown as TCGPlayerData | null
+      };
+      
       if (!cardMap.has(userCard.cardId)) {
         cardMap.set(userCard.cardId, {
-          card: userCard.card,
+          card: typedCard,
           variants: [userCard as unknown as CardVariant]
         });
       } else {
@@ -304,11 +313,10 @@ export default async function CollectionPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {recentCards.map((item) => (
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   <CollectionCardItem 
                     key={item.card.id} 
-                    card={item.card as any} 
-                    variants={item.variants as any}
+                    card={item.card} 
+                    variants={item.variants}
                   />
                 ))}
               </div>
@@ -331,11 +339,10 @@ export default async function CollectionPage() {
           {groupedCards.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {groupedCards.map((item) => (
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 <CollectionCardItem 
                   key={item.card.id} 
-                  card={item.card as any} 
-                  variants={item.variants as any}
+                  card={item.card} 
+                  variants={item.variants}
                 />
               ))}
             </div>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -273,7 +274,6 @@ export default async function CardDetailPage({
             {userId ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   <CollectionVariantsButton 
                     cardId={card.id}
                     cardName={card.name}

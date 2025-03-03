@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/collection/collection-card-item.tsx
 'use client';
 
