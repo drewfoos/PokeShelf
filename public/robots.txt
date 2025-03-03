@@ -1,0 +1,12 @@
+// public/robots.txt
+User-agent: *
+Disallow: /api/
+Disallow: /collection/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-content/
+Disallow: /wp-includes/
+Disallow: /wordpress/
+Allow: /
+
+Sitemap: https://your-site.com/sitemap.xml
