@@ -112,13 +112,13 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
           cardName={selectedCard.name}
           setId={selectedCard.setId}
           setName={selectedCard.setName}
-          releaseDate={selectedCard.releaseDate || "2000/01/01"}
+          releaseDate="2000/01/01" // Default release date as Card type doesn't have this field
           cardImage={selectedCard.images?.large || selectedCard.images?.small || undefined}
           tcgplayer={selectedCard.tcgplayer || null}
         />
       )}
     </>
   );
-};
+}
 
 export default CardGrid;
