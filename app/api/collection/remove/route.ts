@@ -1,16 +1,15 @@
 // app/api/collection/remove/route.ts
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthenticatedUser, getUserCollectionId } from "@/lib/auth";
 import { RemoveFromCollectionRequestParams, CollectionRemoveResponse } from "@/types";
 
 export async function POST(request: NextRequest) {
   try {
-    // Check user auth
-    const { userId } = await auth();
-    const user = await currentUser();
+    // Check user auth using our helper
+    const authUser = await getAuthenticatedUser();
    
-    if (!userId || !user) {
+    if (!authUser) {
       // Fixed response with explicit type
       const response: CollectionRemoveResponse = {
         success: false,
@@ -41,14 +40,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(response, { status: 400 });
     }
    
-    // Get the user record from our database
-    const dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      include: { collection: true }
-    });
-   
-    // If user doesn't exist or doesn't have a collection, there's nothing to remove
-    if (!dbUser || !dbUser.collection) {
+    // Get the user's collection ID
+    const collectionId = await getUserCollectionId();
+    
+    if (!collectionId) {
       // Fixed response with explicit type
       const response: CollectionRemoveResponse = {
         success: false,
@@ -58,8 +53,6 @@ export async function POST(request: NextRequest) {
       };
       return NextResponse.json(response, { status: 404 });
     }
-   
-    const collectionId = dbUser.collection.id;
    
     // Check if the specific variant exists in the collection
     const userCard = await prisma.userCard.findUnique({

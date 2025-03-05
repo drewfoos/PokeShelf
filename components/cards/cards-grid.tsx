@@ -1,8 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { SignInButton } from '@clerk/nextjs';
 import CardItem from '@/components/cards/card-item';
 import CollectionVariantsDialog from '@/components/collection/collection-variants-dialog';
+import { Button } from '@/components/ui/button';
+import { Sparkles } from 'lucide-react';
 // Import the standardized Card type
 import { Card as CardType } from '@/types';
 
@@ -21,6 +25,7 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
   // State to track which card to show the variants dialog for
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { isLoaded, isSignedIn } = useAuth();
   
   // Find the selected card in the cards array
   const selectedCard = selectedCardId ? cards.find(card => card.id === selectedCardId) : null;
@@ -28,7 +33,13 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
   // Handle adding a variant
   const handleAddVariant = (cardId: string) => {
     setSelectedCardId(cardId);
-    setIsDialogOpen(true);
+    
+    // Only open the dialog if the user is signed in
+    // For unauthenticated users, the AuthenticatedCollectionAction component 
+    // will handle showing the sign-in modal, so we don't need to do anything here
+    if (isLoaded && isSignedIn) {
+      setIsDialogOpen(true);
+    }
   };
 
   // Handle closing the dialog
@@ -37,6 +48,7 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
     setSelectedCardId(null);
   };
 
+  // Show a loading state while the cards are being fetched
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -50,6 +62,7 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
     );
   }
 
+  // Show an empty state if no cards are found
   if (!cards || cards.length === 0) {
     return (
       <div className="text-center py-10">
@@ -96,7 +109,7 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
       </div>
 
       {/* Variants Dialog */}
-      {selectedCard && (
+      {selectedCard && isSignedIn && (
         <CollectionVariantsDialog
           isOpen={isDialogOpen}
           onClose={handleCloseDialog}

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import AuthenticatedCollectionAction from '@/components/collection/authenticated-collection-action';
 // Import the standardized Card type
 import { Card as CardType } from '@/types';
 
@@ -57,15 +58,21 @@ const CardItem: React.FC<CardItemProps> = ({ card, onAddVariant }) => {
         
         {/* Add Variants Button (top right corner) */}
         <div className="absolute top-2 right-2 z-10">
-          <Button
-            size="sm"
-            className="h-8 w-8 p-0 rounded-full bg-primary text-white shadow-md hover:bg-primary/90 transition-colors"
+          <AuthenticatedCollectionAction 
+            size="sm" 
+            isIconOnly={true}
             onClick={handleAddClick}
-            title="Add to Collection"
           >
-            <Plus className="h-5 w-5" strokeWidth={2.5} />
-            <span className="sr-only">Add to Collection</span>
-          </Button>
+            <Button
+              size="sm"
+              className="h-8 w-8 p-0 rounded-full bg-primary text-white shadow-md hover:bg-primary/90 transition-colors"
+              onClick={handleAddClick}
+              title="Add to Collection"
+            >
+              <Plus className="h-5 w-5" strokeWidth={2.5} />
+              <span className="sr-only">Add to Collection</span>
+            </Button>
+          </AuthenticatedCollectionAction>
         </div>
         
         {/* Semi-transparent name bar at the bottom with number on the right */}

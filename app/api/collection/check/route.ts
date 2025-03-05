@@ -1,16 +1,15 @@
 // app/api/collection/check/route.ts
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { CollectionCheckResponse } from "@/types";
 
 export async function GET(request: NextRequest) {
   try {
-    // Check user auth
-    const { userId } = await auth();
-    const user = await currentUser();
+    // Check user auth using our helper
+    const authUser = await getAuthenticatedUser();
     
-    if (!userId || !user) {
+    if (!authUser) {
       return NextResponse.json({ 
         success: false,
         inCollection: false,
@@ -47,7 +46,7 @@ export async function GET(request: NextRequest) {
     
     // Get the user record from our database
     const dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
+      where: { clerkId: authUser.userId },
       include: { collection: true }
     });
     

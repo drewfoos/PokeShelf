@@ -1,5 +1,4 @@
 // app/collection/page.tsx
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronRight, Plus, Search } from "lucide-react";
 import CollectionCardItem from '@/components/collection/collection-card-item';
+import { getAuthenticatedUser, getCurrentDbUser } from '@/lib/auth';
 // Import standardized types
 import { 
   GroupedCard,
@@ -20,94 +20,56 @@ import {
 export const dynamic = "force-dynamic";
 
 async function getUserCollection() {
-  const { userId } = await auth();
-  const clerkUser = await currentUser();
+  // Get the authenticated user using our helper
+  const authUser = await getAuthenticatedUser();
   
-  if (!userId || !clerkUser) {
+  // If no authenticated user, return null
+  if (!authUser) {
     return null;
   }
 
   try {
-    // First, find the user by clerkId
-    let user = await prisma.user.findUnique({
-      where: { clerkId: userId },
+    // Get the user from our database using getCurrentDbUser helper
+    // This will create the user if they don't exist
+    const dbUser = await getCurrentDbUser();
+    
+    if (!dbUser) {
+      console.error("Failed to get or create user in database");
+      return null;
+    }
+
+    // Find the user with their collection
+    const userWithCollection = await prisma.user.findUnique({
+      where: { id: dbUser.id },
       include: {
         collection: true,
       },
     });
 
-    // If no user exists in database, create one immediately
-    if (!user) {
-      console.log(`User with Clerk ID ${userId} not found in database. Creating user record immediately.`);
-      
-      // Get primary email if available
-      const primaryEmail = clerkUser.emailAddresses && clerkUser.emailAddresses.length > 0 
-        ? clerkUser.emailAddresses[0].emailAddress 
-        : '';
-      
-      // Get user name from Clerk
-      const userName = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 
-                       clerkUser.username || 
-                       'User';
-      
-      // Create user with collection
-      user = await prisma.user.create({
-        data: {
-          clerkId: userId,
-          email: primaryEmail,
-          name: userName,
-          imageUrl: clerkUser.imageUrl || '',
-          collection: {
-            create: {
-              totalCards: 0,
-              uniqueCards: 0,
-              estimatedValue: 0,
-            },
-          },
-          wishlist: {
-            create: {}
-          }
-        },
-        include: {
-          collection: true,
-        },
-      });
-      
-      console.log(`User created successfully with ID: ${user.id}`);
-    }
-
-    // Ensure the user exists before continuing (TypeScript safety)
-    if (!user) {
-      throw new Error("Failed to create user record");
+    if (!userWithCollection) {
+      console.error(`User with ID ${dbUser.id} not found in database after creation.`);
+      return null;
     }
     
-    // If user exists but doesn't have a collection, create one
-    if (!user.collection) {
-      console.log(`User ${userId} found but has no collection. Creating collection.`);
-      
-      user = await prisma.user.update({
-        where: { clerkId: userId },
+    // If user doesn't have a collection, create one
+    let collection = userWithCollection.collection;
+    if (!collection) {
+      collection = await prisma.userCollection.create({
         data: {
-          collection: {
-            create: {
-              totalCards: 0,
-              uniqueCards: 0,
-              estimatedValue: 0,
-            },
-          },
-        },
-        include: {
-          collection: true,
+          user: { connect: { id: dbUser.id } },
+          totalCards: 0,
+          uniqueCards: 0,
+          estimatedValue: 0,
         },
       });
       
-      console.log(`Collection created successfully for user: ${user.id}`);
+      console.log(`Collection created successfully for user: ${dbUser.id}`);
     }
     
     // Get all user cards with variants
-    const userCards = user.collection ? await prisma.userCard.findMany({
+    const userCards = collection ? await prisma.userCard.findMany({
       where: { 
-        collectionId: user.collection.id 
+        collectionId: collection.id 
       },
       orderBy: { 
         updatedAt: "desc" 
@@ -145,8 +107,8 @@ async function getUserCollection() {
     const recentCards = groupedCards.slice(0, 10);
     
     return {
-      user,
-      collection: user.collection,
+      user: userWithCollection,
+      collection: collection,
       recentCards,
       groupedCards
     };
@@ -157,10 +119,12 @@ async function getUserCollection() {
 }
 
 export default async function CollectionPage() {
-  const user = await currentUser();
+  // Get the authenticated user
+  const authUser = await getAuthenticatedUser();
   
-  if (!user) {
-    redirect("/sign-in");
+  // If not authenticated, redirect to sign-in
+  if (!authUser) {
+    redirect("/sign-in?redirect=/collection");
   }
   
   const data = await getUserCollection();

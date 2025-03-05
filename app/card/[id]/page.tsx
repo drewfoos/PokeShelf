@@ -4,9 +4,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, Heart, TrendingUp, Info, Sparkles } from 'lucide-react';
-import { auth } from "@clerk/nextjs/server";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import prisma from '@/lib/prisma';
+import { getAuthenticatedUser } from '@/lib/auth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -86,9 +86,12 @@ export default async function CardDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // Await the params and auth before accessing properties
+  // Await the params before accessing properties
   const resolvedParams = await params;
-  const { userId } = await auth();
+  // Use our new auth helper instead of direct Clerk auth
+  const authUser = await getAuthenticatedUser();
+  const isAuthenticated = !!authUser;
+  
   const card = await getCard(resolvedParams.id);
 
   if (!card) {
@@ -119,7 +122,7 @@ export default async function CardDetailPage({
   return (
     <div className="container mx-auto max-w-6xl">
       {/* Header with back button and gradient section */}
-      <div className="pt-4 pb-1 mb-0">
+      <div className="mb-0">
         <Link 
           href={`/sets/${card.setId}`}
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -194,7 +197,7 @@ export default async function CardDetailPage({
 
           {/* Action Buttons */}
           <div className="mt-8 flex flex-col w-full max-w-md space-y-3">
-            {userId ? (
+            {isAuthenticated ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <CollectionVariantsButton 
@@ -346,7 +349,7 @@ export default async function CardDetailPage({
           )}
           
           {/* Sign Up Prompt (only for non-logged in users) */}
-          {!userId && (
+          {!isAuthenticated && (
             <Card className="p-6 border-primary/20 bg-primary/5 shadow-lg">
               <div className="flex flex-col items-center text-center">
                 <Heart className="h-10 w-10 text-primary mb-3" />

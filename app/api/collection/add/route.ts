@@ -1,7 +1,7 @@
 // app/api/collection/add/route.ts
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getAuthenticatedUser, getUserCollectionId } from "@/lib/auth";
 import { 
   AddToCollectionRequestParams, 
   CollectionModifyResponse,
@@ -10,11 +10,10 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check user auth
-    const { userId } = await auth();
-    const user = await currentUser();
+    // Check user auth using our helper
+    const authUser = await getAuthenticatedUser();
    
-    if (!userId || !user) {
+    if (!authUser) {
       // Fixed response with correct type structure
       const response: CollectionModifyResponse = {
         success: false,
@@ -59,79 +58,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(response, { status: 404 });
     }
    
-    // Rest of the function remains the same...
+    // Get the user's collection ID, creating it if needed
+    const collectionId = await getUserCollectionId();
     
-    // Get the user record from our database or create it if it doesn't exist
-    let dbUser = await prisma.user.findUnique({
-      where: { clerkId: userId },
-      include: { collection: true }
-    });
-   
-    // If user doesn't exist in our database, create them
-    if (!dbUser) {
-      // Extract user info from Clerk
-      const primaryEmail = user.emailAddresses && user.emailAddresses.length > 0 
-        ? user.emailAddresses[0].emailAddress 
-        : '';
-      
-      const name = user.firstName && user.lastName 
-        ? `${user.firstName} ${user.lastName}`.trim() 
-        : user.username || 'User';
-      
-      // Create the user in our database
-      dbUser = await prisma.user.create({
-        data: {
-          clerkId: userId,
-          email: primaryEmail,
-          name: name,
-          imageUrl: user.imageUrl,
-          // Also create an empty collection and wishlist for the user
-          collection: {
-            create: {
-              totalCards: 0,
-              uniqueCards: 0,
-              estimatedValue: 0
-            }
-          },
-          wishlist: {
-            create: {}
-          }
-        },
-        include: { collection: true }
-      });
-      
-      console.log(`User created during add card operation with ID: ${userId}`);
-    }
-   
-    // Variable to hold the collection ID
-    let collectionId: string;
-   
-    // If no collection exists, create one
-    if (!dbUser.collection) {
-      const newCollection = await prisma.userCollection.create({
-        data: {
-          user: { connect: { id: dbUser.id } },
-          totalCards: 0,
-          uniqueCards: 0,
-          estimatedValue: 0
-        }
-      });
-     
-      collectionId = newCollection.id;
-    } else {
-      collectionId = dbUser.collection.id;
+    if (!collectionId) {
+      return NextResponse.json({
+        success: false,
+        error: "Failed to retrieve user collection"
+      } as CollectionModifyResponse, { status: 500 });
     }
    
     // Check if the card already exists with the same variant in the collection
     const existingUserCard = await prisma.userCard.findUnique({
-        where: {
-          userCard_collection_card_variant_unique: {
-            collectionId: collectionId,
-            cardId: cardId,
-            variant: variant,
-          },
+      where: {
+        userCard_collection_card_variant_unique: {
+          collectionId: collectionId,
+          cardId: cardId,
+          variant: variant,
         },
-      });
+      },
+    });
    
     // Start a transaction to update everything
     const result = await prisma.$transaction(async (tx) => {
