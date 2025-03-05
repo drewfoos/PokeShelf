@@ -2,20 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { pokemonTcgService } from '@/lib/services/pokemonTcgService';
-
-// Define result interfaces to fix type issues
-interface SetSyncResult {
-  id: string;
-  name?: string;
-  count?: number;
-  error?: unknown;
-}
-
-interface BatchSyncResult {
-  success: boolean;
-  sets: SetSyncResult[];
-  [key: string]: unknown;
-}
+import { AdminSyncRequest, SyncResponse, SetSyncResult } from '@/types';
 
 /**
  * Admin API for synchronizing data from the Pokemon TCG API.
@@ -26,9 +13,9 @@ export async function POST(request: NextRequest) {
     // Ensure the user is an admin.
     await requireAdmin();
 
-    // Parse the request body.
-    const body = await request.json();
-    const { action, setId, type } = body;
+    // Parse the request body with proper typing
+    const body: AdminSyncRequest = await request.json();
+    const { action, setId, type, setIds } = body;
 
     if (!action) {
       return NextResponse.json(
@@ -68,7 +55,7 @@ export async function POST(request: NextRequest) {
                                'mcd18', 'mcd19', 'mcd21', 'mcd22', 'mcd23'];
           
           // Create properly typed result object
-          const mcResult: BatchSyncResult = { 
+          const mcResult: { success: boolean; sets: SetSyncResult[] } = { 
             success: true, 
             sets: [] 
           };
@@ -103,7 +90,7 @@ export async function POST(request: NextRequest) {
           const recentSets = ['pevo', 'ssp', 'scr', 'sfa', 'tmq', 'tfo', 'sv3pt5', 'sv4', 'sv4a', 'sv3'];
           
           // Create properly typed result object
-          const recentResult: BatchSyncResult = { 
+          const recentResult: { success: boolean; sets: SetSyncResult[] } = { 
             success: true, 
             sets: [] 
           };
@@ -146,7 +133,7 @@ export async function POST(request: NextRequest) {
           const popularSets = ['base1', 'base2', 'basep', 'gym1', 'gym2', 'neo1', 'neo2', 'neo3', 'neo4'];
           
           // Create properly typed result object
-          const popularResult: BatchSyncResult = { 
+          const popularResult: { success: boolean; sets: SetSyncResult[] } = { 
             success: true, 
             sets: [] 
           };
@@ -202,14 +189,14 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'syncBatch':
-        if (!body.setIds || !Array.isArray(body.setIds) || body.setIds.length === 0) {
+        if (!setIds || !Array.isArray(setIds) || setIds.length === 0) {
           return NextResponse.json(
             { error: 'setIds array is required for syncBatch action' },
             { status: 400 }
           );
         }
-        console.log(`Syncing batch of ${body.setIds.length} sets...`);
-        result = await pokemonTcgService.syncBatchSets(body.setIds);
+        console.log(`Syncing batch of ${setIds.length} sets...`);
+        result = await pokemonTcgService.syncBatchSets(setIds);
         break;
 
       default:
@@ -222,12 +209,14 @@ export async function POST(request: NextRequest) {
     const executionTimeMs = Date.now() - startTime;
 
     // Return a success response with the result
-    return NextResponse.json({
+    const response: SyncResponse = {
       success: true,
       message: `Sync operation '${action}' executed successfully.`,
       executionTimeMs,
       result
-    });
+    };
+    
+    return NextResponse.json(response);
   } catch (error) {
     console.error('[ADMIN ERROR] Error in admin sync API:', error);
 

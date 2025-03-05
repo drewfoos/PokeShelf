@@ -1,6 +1,8 @@
+// app/api/admin/users/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, setUserAsAdmin, initializeAdminUser } from '@/lib/admin';
 import prisma from '@/lib/prisma';
+import { AdminUserRequest, AdminUserManagementResponse, AdminUsersResponse, mapMongoUserToInterface } from '@/types';
 
 // GET route to list all users (admin only)
 export async function GET(request: NextRequest) {
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
     const searchTerm = searchParams.get('search') || '';
     
     // Find users matching the search term
-    const users = await prisma.user.findMany({
+    const userDocs = await prisma.user.findMany({
       where: {
         OR: [
           { name: { contains: searchTerm, mode: 'insensitive' } },
@@ -24,19 +26,23 @@ export async function GET(request: NextRequest) {
       take: 100 // Limit to 100 users for performance
     });
     
-    return NextResponse.json({ users });
+    // Map the user documents to our User interface
+    const users = userDocs.map(mapMongoUserToInterface);
+    
+    const response: AdminUsersResponse = { users };
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Error getting users:', error);
     
     if (error instanceof Error && error.message.includes('Unauthorized')) {
       return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
+        { error: 'Unauthorized: Admin access required' } as Partial<AdminUsersResponse>,
         { status: 403 }
       );
     }
     
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { error: error instanceof Error ? error.message : 'Unknown error' } as Partial<AdminUsersResponse>,
       { status: 500 }
     );
   }
@@ -45,7 +51,7 @@ export async function GET(request: NextRequest) {
 // POST route to create/update admin users
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body: AdminUserRequest = await request.json();
     const { action, email } = body;
     
     if (action === 'initialize') {
@@ -56,14 +62,20 @@ export async function POST(request: NextRequest) {
       });
       
       if (adminExists) {
-        return NextResponse.json(
-          { error: 'Admin user already exists' },
-          { status: 400 }
-        );
+        const response: AdminUserManagementResponse = {
+          success: false,
+          message: 'Admin user already exists'
+        };
+        return NextResponse.json(response, { status: 400 });
       }
       
       await initializeAdminUser();
-      return NextResponse.json({ success: true, message: 'Initial admin user created' });
+      
+      const response: AdminUserManagementResponse = {
+        success: true,
+        message: 'Initial admin user created'
+      };
+      return NextResponse.json(response);
     }
     
     // All other actions require admin authentication
@@ -71,40 +83,46 @@ export async function POST(request: NextRequest) {
     
     if (action === 'setAdmin') {
       if (!email) {
-        return NextResponse.json(
-          { error: 'Email is required' },
-          { status: 400 }
-        );
+        const response: AdminUserManagementResponse = {
+          success: false,
+          message: 'Email is required'
+        };
+        return NextResponse.json(response, { status: 400 });
       }
       
       const success = await setUserAsAdmin(email);
-      if (success) {
-        return NextResponse.json({ success, message: `User ${email} is now an admin` });
-      } else {
-        return NextResponse.json(
-          { error: `Failed to set ${email} as admin` },
-          { status: 500 }
-        );
-      }
+      
+      const response: AdminUserManagementResponse = {
+        success,
+        message: success ? `User ${email} is now an admin` : `Failed to set ${email} as admin`
+      };
+      
+      return NextResponse.json(
+        response, 
+        success ? { status: 200 } : { status: 500 }
+      );
     }
     
-    return NextResponse.json(
-      { error: `Unknown action: ${action}` },
-      { status: 400 }
-    );
+    const response: AdminUserManagementResponse = {
+      success: false,
+      message: `Unknown action: ${action}`
+    };
+    return NextResponse.json(response, { status: 400 });
   } catch (error) {
     console.error('Error managing admin users:', error);
     
     if (error instanceof Error && error.message.includes('Unauthorized')) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
-        { status: 403 }
-      );
+      const response: AdminUserManagementResponse = {
+        success: false,
+        message: 'Unauthorized: Admin access required'
+      };
+      return NextResponse.json(response, { status: 403 });
     }
     
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    const response: AdminUserManagementResponse = {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error'
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 }

@@ -2,25 +2,11 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight } from 'lucide-react';
-import { JsonValue } from '@prisma/client/runtime/library';
-
-// Types based on your Prisma schema
-interface PrismaSet {
-  id: string;
-  name: string;
-  series: string;
-  printedTotal: number;
-  total: number;
-  releaseDate: string;
-  updatedAt: string;
-  ptcgoCode: string | null;
-  legalities: JsonValue;
-  images: JsonValue;
-  lastUpdated: Date;
-}
+// Import the Set type from our types folder
+import { Set } from '@/types';
 
 interface RecentSetsProps {
-  sets?: PrismaSet[] | null;
+  sets?: Set[] | null;
 }
 
 const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
@@ -36,8 +22,10 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
       updatedAt: "",
       ptcgoCode: null,
       legalities: {},
-      images: {},
-      lastUpdated: new Date()
+      images: {
+        symbol: "",
+        logo: ""
+      }
     },
     {
       id: "placeholder-2",
@@ -49,8 +37,10 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
       updatedAt: "",
       ptcgoCode: null,
       legalities: {},
-      images: {},
-      lastUpdated: new Date()
+      images: {
+        symbol: "",
+        logo: ""
+      }
     },
     {
       id: "placeholder-3",
@@ -62,8 +52,10 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
       updatedAt: "",
       ptcgoCode: null,
       legalities: {},
-      images: {},
-      lastUpdated: new Date()
+      images: {
+        symbol: "",
+        logo: ""
+      }
     },
     {
       id: "placeholder-4",
@@ -75,8 +67,10 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
       updatedAt: "",
       ptcgoCode: null,
       legalities: {},
-      images: {},
-      lastUpdated: new Date()
+      images: {
+        symbol: "",
+        logo: ""
+      }
     }
   ];
 
@@ -100,9 +94,8 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
             <Link href={`/sets/${set.id}`} prefetch={false} key={set.id} className="block">
               <div className="bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200 border border-border/50 h-full">
                 <div className="aspect-square relative bg-gradient-to-br from-primary/5 to-transparent p-4 flex items-center justify-center">
-                  {/* Handle images safely, since it's a JsonValue */}
-                  {set.images && typeof set.images === 'object' && set.images !== null && 
-                   'logo' in set.images && typeof set.images.logo === 'string' ? (
+                  {/* Handle images safely, with proper typing */}
+                  {set.images && 'logo' in set.images && typeof set.images.logo === 'string' ? (
                     <div className="relative w-full h-24">
                       <Image 
                         src={set.images.logo}
@@ -123,8 +116,7 @@ const RecentSets: React.FC<RecentSetsProps> = ({ sets }) => {
                   )}
                   
                   {/* Set symbol if available */}
-                  {set.images && typeof set.images === 'object' && set.images !== null && 
-                   'symbol' in set.images && typeof set.images.symbol === 'string' && (
+                  {set.images && 'symbol' in set.images && typeof set.images.symbol === 'string' && (
                     <div className="absolute bottom-3 right-3 h-8 w-8">
                       <Image 
                         src={set.images.symbol}

@@ -9,69 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronRight, Plus, Search } from "lucide-react";
 import CollectionCardItem from '@/components/collection/collection-card-item';
-
-// Updated type definitions with proper typing
-interface CardImage {
-  small?: string;
-  large?: string;
-  [key: string]: string | undefined;
-}
-
-interface TCGPlayerPriceData {
-  low: number;
-  mid: number;
-  high: number;
-  market: number;
-  directLow: number | null;
-}
-
-interface TCGPlayerPrices {
-  normal?: TCGPlayerPriceData;
-  holofoil?: TCGPlayerPriceData;
-  reverseHolofoil?: TCGPlayerPriceData;
-  '1stEditionHolofoil'?: TCGPlayerPriceData;
-  [key: string]: TCGPlayerPriceData | undefined;
-}
-
-interface TCGPlayerData {
-  url: string;
-  updatedAt: string;
-  prices?: TCGPlayerPrices;
-}
-
-interface CardType {
-  id: string;
-  name: string;
-  number: string;
-  supertype: string;
-  subtypes: string[];
-  hp: string | null;
-  types: string[];
-  setId: string;
-  setName: string;
-  artist: string | null;
-  rarity: string;
-  nationalPokedexNumbers: number[];
-  images: CardImage | null;
-  tcgplayer: TCGPlayerData | null;
-  lastUpdated: Date;
-}
-
-interface CardVariant {
-  id: string;
-  cardId: string;
-  quantity: number;
-  condition: string;
-  variant: string;
-  isFoil: boolean;
-  isFirstEdition?: boolean;
-  purchasePrice?: number | null;
-}
-
-interface GroupedCardType {
-  card: CardType;
-  variants: CardVariant[];
-}
+// Import standardized types
+import { 
+  GroupedCard,
+  mapMongoCardToInterface,
+  mapMongoUserCardToInterface
+} from '@/types';
 
 // This page needs to be dynamic since it shows user-specific data
 export const dynamic = "force-dynamic";
@@ -175,24 +118,21 @@ async function getUserCollection() {
     }) : [];
 
     // Group cards by cardId to support multiple variants of the same card
-    const groupedCards: GroupedCardType[] = [];
-    const cardMap = new Map<string, GroupedCardType>();
+    const groupedCards: GroupedCard[] = [];
+    const cardMap = new Map<string, GroupedCard>();
     
     userCards.forEach(userCard => {
-      // Properly cast the Prisma JSON to our expected types
-      const typedCard: CardType = {
-        ...userCard.card,
-        images: userCard.card.images as unknown as CardImage | null,
-        tcgplayer: userCard.card.tcgplayer as unknown as TCGPlayerData | null
-      };
+      // Map the MongoDB documents to our typed interfaces
+      const typedCard = mapMongoCardToInterface(userCard.card);
+      const typedVariant = mapMongoUserCardToInterface(userCard);
       
       if (!cardMap.has(userCard.cardId)) {
         cardMap.set(userCard.cardId, {
           card: typedCard,
-          variants: [userCard as unknown as CardVariant]
+          variants: [typedVariant]
         });
       } else {
-        cardMap.get(userCard.cardId)?.variants.push(userCard as unknown as CardVariant);
+        cardMap.get(userCard.cardId)?.variants.push(typedVariant);
       }
     });
     

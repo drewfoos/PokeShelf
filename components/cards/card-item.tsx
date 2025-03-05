@@ -15,7 +15,7 @@ const CardItem: React.FC<CardItemProps> = ({ card }) => {
   const { id, name, images, setName, rarity, artist } = card;
   
   // Extract image URLs - images is now properly typed as CardImage
-  const smallImage = images && 'small' in images ? images.small : null;
+  const smallImage = images?.small || null;
   
   return (
     <Link href={`/card/${id}`} passHref>

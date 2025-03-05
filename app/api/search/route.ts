@@ -2,8 +2,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { SearchCardsRequest, SearchCardsResponse, Pagination } from "@/types";
-import { Card, mapMongoCardToInterface } from "@/types";
+import { 
+  SearchCardsRequest, 
+  SearchCardsResponse, 
+  Pagination, 
+  Card, 
+  mapMongoCardToInterface 
+} from "@/types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -111,19 +116,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     console.error("Error searching cards:", error);
-    return NextResponse.json(
-      { 
-        success: false,
-        error: "Failed to search cards",
-        cards: [],
-        pagination: {
-          page: 1,
-          pageSize: 20,
-          totalCount: 0,
-          totalPages: 0
-        }
-      } as SearchCardsResponse,
-      { status: 500 }
-    );
+    
+    // Return error response with proper typing
+    const errorResponse: SearchCardsResponse = {
+      cards: [],
+      pagination: {
+        page: 1,
+        pageSize: 20,
+        totalCount: 0,
+        totalPages: 0
+      }
+    };
+    
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }

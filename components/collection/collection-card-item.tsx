@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // components/collection/collection-card-item.tsx
 'use client';
 
@@ -8,31 +7,8 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice } from "@/lib/utils";
-
-// Types (should match your main app types)
-interface CardImage {
-  small?: string;
-  large?: string;
-  [key: string]: string | undefined;
-}
-
-interface CardType {
-  id: string;
-  name: string;
-  setName: string;
-  images: CardImage | null;
-  // Other fields that you use in this component
-  tcgplayer?: any;
-}
-
-interface CardVariant {
-  id: string;
-  quantity: number;
-  condition: string;
-  variant: string;
-  isFoil: boolean;
-  purchasePrice?: number | null;
-}
+// Import standardized types
+import { Card as CardType, CardVariant, getCardPrice } from '@/types';
 
 interface CollectionCardItemProps {
   card: CardType;
@@ -42,9 +18,7 @@ interface CollectionCardItemProps {
 // Collection Card component that handles multiple variants
 export default function CollectionCardItem({ card, variants }: CollectionCardItemProps) {
   // Extract image URL from the card images object
-  const smallImage = card.images && typeof card.images === "object" ? 
-    card.images.small : 
-    undefined;
+  const smallImage = card.images?.small || undefined;
   
   // Total quantity across all variants
   const totalQuantity = variants.reduce((sum, v) => sum + v.quantity, 0);
@@ -57,15 +31,14 @@ export default function CollectionCardItem({ card, variants }: CollectionCardIte
     
     // If no purchase price, try to use market price based on variant type
     if (card.tcgplayer?.prices) {
-      const prices = card.tcgplayer.prices;
-      if (variant.variant === 'normal' && prices.normal?.market) {
-        return total + (prices.normal.market * variant.quantity);
-      }
-      if (variant.variant === 'holofoil' && prices.holofoil?.market) {
-        return total + (prices.holofoil.market * variant.quantity);
-      }
-      if (variant.variant === 'reverseHolofoil' && prices.reverseHolofoil?.market) {
-        return total + (prices.reverseHolofoil.market * variant.quantity);
+      const variantPrice = getCardPrice(
+        card.tcgplayer, 
+        variant.variant !== 'normal', // Is foil
+        variant.isFirstEdition
+      );
+      
+      if (variantPrice) {
+        return total + (variantPrice * variant.quantity);
       }
     }
     

@@ -4,11 +4,13 @@ import HeroSection from '@/components/home/hero-section';
 import FeaturesSection from '@/components/home/features-section';
 import RecentSets from '@/components/home/recent-sets';
 import CTASection from '@/components/home/cta-section';
+// Import the Set type and mapping function
+import { Set, mapMongoSetToInterface } from '@/types';
 
 // Make this page dynamic to ensure we get fresh data each time
 export const revalidate = 86400;
 
-async function getRecentSets() {
+async function getRecentSets(): Promise<Set[] | null> {
   try {
     // Get the most recent sets based on release date
     const sets = await prisma.set.findMany({
@@ -18,7 +20,8 @@ async function getRecentSets() {
       take: 4, // Just get the 4 most recent sets
     });
     
-    return sets;
+    // Map the Prisma models to our Set interface
+    return sets.map(set => mapMongoSetToInterface(set));
   } catch (error) {
     console.error('Failed to fetch recent sets:', error);
     return null;
