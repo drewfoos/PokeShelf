@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="1000" height="1000"><style>
+    #light-icon {
+      display: inline;
+    }
+    #dark-icon {
+      display: none;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      #light-icon {
+        display: none;
+      }
+      #dark-icon {
+        display: inline;
+      }
+    }
+  </style><g id="light-icon"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="1000" height="1000"><g><g transform="matrix(3.90625,0,0,3.90625,0,0)"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="256px" height="256px"><svg width="256px" height="256px" viewBox="0 0 48 48" id="a" xmlns="http://www.w3.org/2000/svg" fill="#7B3AED" stroke="#7B3AED" stroke-width="2.688">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+
+<g id="SVGRepo_iconCarrier">
+
+<defs>
+
+<style>.c{fill:none;stroke:#7B3AED;stroke-linecap:round;stroke-linejoin:round;}</style>
+
+</defs>
+
+<circle id="b" class="c" cx="23.99" cy="23.99" r="8"></circle>
+
+<path class="c" d="M2.83,27.75c1.77,10.08,10.57,17.74,21.16,17.74s19.39-7.66,21.16-17.74h-8.71c-1.61,5.35-6.58,9.24-12.45,9.24s-10.84-3.89-12.45-9.24H2.83Z"></path>
+
+<path class="c" d="M2.82,20.25C4.59,10.16,13.4,2.49,23.99,2.49s19.4,7.67,21.17,17.76h-8.71c-1.61-5.36-6.58-9.26-12.46-9.26s-10.85,3.9-12.46,9.26H2.82Z"></path>
+
+</g>
+
+</svg></svg></g></g></svg></g><g id="dark-icon"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="1000" height="1000"><g clip-path="url(#SvgjsClipPath1022)"><rect width="1000" height="1000" fill="#ffffff"></rect><g transform="matrix(2.734375,0,0,2.734375,150,150)"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="256px" height="256px"><svg width="256px" height="256px" viewBox="0 0 48 48" id="a" xmlns="http://www.w3.org/2000/svg" fill="#7B3AED" stroke="#7B3AED" stroke-width="2.688">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+
+<g id="SVGRepo_iconCarrier">
+
+<defs>
+
+<style>.c{fill:none;stroke:#7B3AED;stroke-linecap:round;stroke-linejoin:round;}</style>
+
+<clipPath id="SvgjsClipPath1022"><rect width="1000" height="1000" x="0" y="0" rx="350" ry="350"></rect></clipPath></defs>
+
+<circle id="b" class="c" cx="23.99" cy="23.99" r="8"></circle>
+
+<path class="c" d="M2.83,27.75c1.77,10.08,10.57,17.74,21.16,17.74s19.39-7.66,21.16-17.74h-8.71c-1.61,5.35-6.58,9.24-12.45,9.24s-10.84-3.89-12.45-9.24H2.83Z"></path>
+
+<path class="c" d="M2.82,20.25C4.59,10.16,13.4,2.49,23.99,2.49s19.4,7.67,21.17,17.76h-8.71c-1.61-5.36-6.58-9.26-12.46-9.26s-10.85,3.9-12.46,9.26H2.82Z"></path>
+
+</g>
+
+</svg></svg></g></g></svg></g></svg>

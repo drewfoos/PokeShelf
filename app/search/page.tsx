@@ -19,12 +19,13 @@ interface SearchPageProps {
     set?: string;
     type?: string;
     rarity?: string;
+    sort?: string; // Add a sort parameter
   }>;
 }
 
 async function searchCards(params: Awaited<SearchPageProps['searchParams']>) {
   try {
-    const { q = '', page = '1', set = '', type = '', rarity = '' } = params;
+    const { q = '', page = '1', set = '', type = '', rarity = '', sort = 'releaseDate' } = params;
 
     // If no query provided at all, return empty results
     if (!q) {
@@ -72,14 +73,37 @@ async function searchCards(params: Awaited<SearchPageProps['searchParams']>) {
     const pageSize = 20;
     const skip = (pageNumber - 1) * pageSize;
 
-    // Execute search with pagination
+    // Configure the sort order
+    let orderBy: Prisma.CardOrderByWithRelationInput = { name: 'asc' };
+    
+    // Set up sorting based on the sort parameter
+    if (sort === 'releaseDate') {
+      // Sort by release date (most recent first)
+      // We need to join with the set table to get the release date
+      orderBy = { 
+        set: { 
+          releaseDate: 'desc' 
+        } 
+      };
+    } else if (sort === 'name') {
+      orderBy = { name: 'asc' };
+    } else if (sort === 'number') {
+      orderBy = { number: 'asc' };
+    }
+
+    // Execute search with pagination and sorting
     const [cardDocs, totalCount] = await Promise.all([
       prisma.card.findMany({
         where: filters,
         skip,
         take: pageSize,
-        orderBy: {
-          name: 'asc'
+        orderBy,
+        include: {
+          set: {
+            select: {
+              releaseDate: true
+            }
+          }
         }
       }),
       prisma.card.count({
@@ -183,7 +207,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     pageSize: 20,
     set: resolvedSearchParams.set || '',
     type: resolvedSearchParams.type || '',
-    rarity: resolvedSearchParams.rarity || ''
+    rarity: resolvedSearchParams.rarity || '',
+    sort: resolvedSearchParams.sort || 'releaseDate' // Default to release date
   };
 
   return (

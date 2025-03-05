@@ -11,6 +11,7 @@ export interface SearchCardsRequest {
   set?: string;
   type?: string;
   rarity?: string;
+  sort?: string
 }
 
 /**

@@ -10,23 +10,73 @@ import {
   SignedOut,
   UserButton
 } from '@clerk/nextjs';
-import { Search, Menu } from 'lucide-react';
+import { Search, Menu, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetClose
+  SheetClose,
+  SheetHeader,
+  SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import AdminNavLink from './admin-nav-link';
 
-// Logo component for reusability
+// Directly import DialogTitle since Sheet may use Dialog internally
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+
+// Logo component using external SVG file
 const Logo = ({ className = '' }: { className?: string }) => (
   <Link href="/" className={`flex items-center gap-2 ${className}`}>
-    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-      <span className="font-bold text-lg text-primary-foreground">P</span>
+    <div className="relative h-9 w-9 flex items-center justify-center">
+      <img 
+        src="/pokeshelf-logo.svg" 
+        alt="PokéShelf Logo" 
+        className="h-full w-auto"
+      />
     </div>
-    <span className="font-bold text-xl md:text-2xl">PokéShelf</span>
+    <span className="text-xl md:text-2xl font-bold tracking-tight">
+      poké<span className="text-primary">shelf</span>
+    </span>
+  </Link>
+);
+
+// Alternative logos - kept for reference but not used in current implementation
+const CardStackLogo = () => (
+  <Link href="/" className="flex items-center gap-2">
+    <div className="relative">
+      {/* Back card */}
+      <div className="absolute -right-0.5 -bottom-0.5 h-8 w-6 rounded-md border-2 border-muted-foreground/70 bg-background transform rotate-6"></div>
+      {/* Middle card */}
+      <div className="absolute -left-0.5 -bottom-0.5 h-8 w-6 rounded-md border-2 border-primary/70 bg-background transform -rotate-6"></div>
+      {/* Front card */}
+      <div className="relative h-8 w-6 rounded-md border-2 border-primary bg-background">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary"></div>
+        <div className="absolute bottom-1 left-1 right-1 h-1.5 rounded-sm bg-primary/20"></div>
+      </div>
+    </div>
+    <span className="text-xl md:text-2xl font-bold tracking-tight">
+      poké<span className="text-primary">shelf</span>
+    </span>
+  </Link>
+);
+
+// Modern grid logo representing a collection
+const CollectionGridLogo = () => (
+  <Link href="/" className="flex items-center gap-2">
+    <div className="relative flex items-center justify-center h-8 w-8 rounded-md bg-background border-2 border-primary">
+      <LayoutGrid className="h-5 w-5 text-primary" />
+    </div>
+    <span className="text-xl md:text-2xl font-bold tracking-tight">
+      poké<span className="text-primary">shelf</span>
+    </span>
   </Link>
 );
 
@@ -34,22 +84,15 @@ const Logo = ({ className = '' }: { className?: string }) => (
 const SearchForm = ({ 
   search, 
   setSearch, 
-  handleSubmit, 
-  isMobile = false,
-  onSearchSubmit = () => {} 
+  handleSubmit
 }: { 
   search: string; 
   setSearch: (value: string) => void; 
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  isMobile?: boolean;
-  onSearchSubmit?: () => void;
 }) => (
   <form 
-    onSubmit={(e) => {
-      handleSubmit(e);
-      if (isMobile) onSearchSubmit();
-    }} 
-    className={isMobile ? "mb-6" : "hidden md:flex items-center"}
+    onSubmit={handleSubmit} 
+    className="hidden md:flex items-center"
   >
     <div className="relative">
       <input
@@ -57,10 +100,7 @@ const SearchForm = ({
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search cards..."
-        className={isMobile 
-          ? "w-full rounded-md border border-border bg-muted py-2 pl-10 pr-4 text-sm" 
-          : "rounded-full border border-border bg-muted py-2 pl-10 pr-4 text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        }
+        className="rounded-full border border-border bg-muted py-2 pl-10 pr-4 text-sm text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
       />
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
     </div>
@@ -144,41 +184,10 @@ const AuthButtons = ({ isMobile = false }: { isMobile?: boolean }) => (
   </SignedOut>
 );
 
-// Mobile menu content component
-const MobileMenuContent = ({ search, setSearch, handleSubmit }: { 
-  search: string; 
-  setSearch: (value: string) => void; 
-  handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-}) => (
-  <div className="flex flex-col h-full">
-    <div className="py-6">
-      <Logo className="mb-6" />
-      
-      {/* Mobile Search */}
-      <SearchForm 
-        search={search} 
-        setSearch={setSearch} 
-        handleSubmit={handleSubmit} 
-        isMobile={true} 
-        onSearchSubmit={() => document.querySelector<HTMLButtonElement>('[data-sheet-close]')?.click()}
-      />
-      
-      {/* Mobile Navigation */}
-      <SignedIn>
-        <NavLinks isMobile={true} />
-      </SignedIn>
-    </div>
-    
-    {/* Mobile Auth Buttons */}
-    <div className="mt-auto border-t border-border pt-6">
-      <AuthButtons isMobile={true} />
-    </div>
-  </div>
-);
-
 // Main navigation component
 const MainNav = () => {
   const [search, setSearch] = useState('');
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -186,6 +195,14 @@ const MainNav = () => {
     if (search.trim()) {
       router.push(`/search?q=${encodeURIComponent(search.trim())}`);
       setSearch('');
+    }
+  };
+
+  const handleMobileSearch = () => {
+    if (search.trim()) {
+      router.push(`/search?q=${encodeURIComponent(search.trim())}`);
+      setSearch('');
+      setMobileSearchOpen(false);
     }
   };
 
@@ -205,8 +222,19 @@ const MainNav = () => {
 
           {/* Search, Auth, & Mobile Menu */}
           <div className="flex items-center gap-4">
-            {/* Search Field */}
+            {/* Search Field (desktop only) */}
             <SearchForm search={search} setSearch={setSearch} handleSubmit={handleSubmit} />
+
+            {/* Mobile search button - opens the search dialog */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="md:hidden"
+              onClick={() => setMobileSearchOpen(true)}
+            >
+              <Search className="h-5 w-5" />
+              <span className="sr-only">Search</span>
+            </Button>
 
             {/* Authentication */}
             <AuthButtons />
@@ -221,7 +249,7 @@ const MainNav = () => {
               />
             </SignedIn>
 
-            {/* Mobile Menu */}
+            {/* Mobile Menu Hamburger - with direct Radix Dialog Title */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
@@ -230,13 +258,57 @@ const MainNav = () => {
                 </Button>
               </SheetTrigger>
               <SheetContent side="right" className="w-[80%] sm:w-[350px]">
-                <MobileMenuContent 
-                  search={search} 
-                  setSearch={setSearch} 
-                  handleSubmit={handleSubmit} 
-                />
+                {/* This is the key fix - adding the DialogTitle directly from Radix */}
+                <DialogPrimitive.Title className="sr-only">
+                  Navigation Menu
+                </DialogPrimitive.Title>
+                
+                {/* Standard shadcn SheetHeader for visual title */}
+                <SheetHeader>
+                  <SheetTitle>Menu</SheetTitle>
+                </SheetHeader>
+                
+                <div className="flex flex-col h-full py-6">
+                  <Logo className="mb-6" />
+                  
+                  {/* Mobile Navigation */}
+                  <SignedIn>
+                    <NavLinks isMobile={true} />
+                  </SignedIn>
+                  
+                  {/* Mobile Auth Buttons */}
+                  <div className="mt-auto border-t border-border pt-6">
+                    <AuthButtons isMobile={true} />
+                  </div>
+                </div>
               </SheetContent>
             </Sheet>
+            
+            {/* Mobile search dialog with proper accessibility */}
+            <Dialog open={mobileSearchOpen} onOpenChange={setMobileSearchOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogTitle>Search Cards</DialogTitle>
+                <div className="space-y-4 py-4">
+                  <div className="relative">
+                    <Input
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search for a card name..."
+                      className="pr-10"
+                      autoFocus
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <Search className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button" onClick={() => setMobileSearchOpen(false)} variant="outline">Cancel</Button>
+                  <Button type="button" onClick={handleMobileSearch} disabled={!search.trim()}>Search</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ export default function SearchLoading() {
      
       <Separator />
      
-      {/* Search Filters Skeleton */}
+      {/* Search Filters Skeleton with sort dropdown */}
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
@@ -27,9 +27,10 @@ export default function SearchLoading() {
         </div>
        
         <div className="flex flex-wrap gap-3">
-          <Skeleton className="h-10 w-40 rounded-md" />
-          <Skeleton className="h-10 w-40 rounded-md" />
-          <Skeleton className="h-10 w-40 rounded-md" />
+          <Skeleton className="h-10 w-40 rounded-md" /> {/* Set filter */}
+          <Skeleton className="h-10 w-40 rounded-md" /> {/* Type filter */}
+          <Skeleton className="h-10 w-40 rounded-md" /> {/* Rarity filter */}
+          <Skeleton className="h-10 w-40 rounded-md" /> {/* Sort dropdown */}
         </div>
       </div>
      
