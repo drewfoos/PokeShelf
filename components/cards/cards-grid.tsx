@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import CardItem from '@/components/cards/card-item';
+import CollectionVariantsDialog from '@/components/collection/collection-variants-dialog';
 // Import the standardized Card type
 import { Card as CardType } from '@/types';
 
@@ -17,11 +19,28 @@ interface Placeholder {
 }
 
 const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
+  // State to track which card to show the variants dialog for
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { isLoaded, isSignedIn } = useAuth();
+  
+  // Find the selected card in the cards array
+  const selectedCard = selectedCardId ? cards.find(card => card.id === selectedCardId) : null;
+
   // Handle adding a variant
   const handleAddVariant = (cardId: string) => {
-    // Just track the event - we don't need to manage a dialog anymore
-    // as the CollectionVariantsButton handles its own dialog state
-    console.log('Add variant clicked for card:', cardId);
+    setSelectedCardId(cardId);
+    
+    // Only open the dialog if the user is signed in
+    if (isLoaded && isSignedIn) {
+      setIsDialogOpen(true);
+    }
+  };
+
+  // Handle closing the dialog
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedCardId(null);
   };
 
   // Show a loading state while the cards are being fetched
@@ -70,18 +89,35 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
       }));
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-      {cards.map((card) => (
-        <CardItem key={card.id} card={card} onAddVariant={handleAddVariant} />
-      ))}
-      
-      {/* Invisible placeholders to maintain grid alignment */}
-      {placeholders.map((placeholder: Placeholder) => (
-        <div key={placeholder.id} className="invisible" aria-hidden="true">
-          {/* Placeholder to maintain grid layout */}
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {cards.map((card) => (
+          <CardItem key={card.id} card={card} onAddVariant={handleAddVariant} />
+        ))}
+        
+        {/* Invisible placeholders to maintain grid alignment */}
+        {placeholders.map((placeholder: Placeholder) => (
+          <div key={placeholder.id} className="invisible" aria-hidden="true">
+            {/* Placeholder to maintain grid layout */}
+          </div>
+        ))}
+      </div>
+
+      {/* Variants Dialog */}
+      {selectedCard && isSignedIn && (
+        <CollectionVariantsDialog
+          isOpen={isDialogOpen}
+          onClose={handleCloseDialog}
+          cardId={selectedCard.id}
+          cardName={selectedCard.name}
+          setId={selectedCard.setId}
+          setName={selectedCard.setName}
+          releaseDate={selectedCard.releaseDate || "2000/01/01"}
+          cardImage={selectedCard.images?.large || selectedCard.images?.small || undefined}
+          tcgplayer={selectedCard.tcgplayer || null}
+        />
+      )}
+    </>
   );
 };
 
