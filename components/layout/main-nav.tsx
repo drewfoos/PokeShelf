@@ -123,22 +123,24 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
   );
 };
 
-// Authentication buttons component
+// Mobile Auth Buttons component (modified for redirection)
 const AuthButtons = ({ isMobile = false }: { isMobile?: boolean }) => (
   <SignedOut>
     {isMobile ? (
       <div className="grid grid-cols-2 gap-2">
         <SheetClose asChild>
-          <SignInButton mode="modal">
+          <Link href="/sign-in">
             <Button variant="outline" className="w-full">
               Sign In
             </Button>
-          </SignInButton>
+          </Link>
         </SheetClose>
         <SheetClose asChild>
-          <SignUpButton mode="modal">
-            <Button className="w-full">Sign Up</Button>
-          </SignUpButton>
+          <Link href="/sign-up">
+            <Button className="w-full">
+              Sign Up
+            </Button>
+          </Link>
         </SheetClose>
       </div>
     ) : (
@@ -155,6 +157,7 @@ const AuthButtons = ({ isMobile = false }: { isMobile?: boolean }) => (
     )}
   </SignedOut>
 );
+
 
 // Main navigation component
 const MainNav = () => {
