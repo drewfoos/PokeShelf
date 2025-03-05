@@ -93,7 +93,8 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
   return (
     <nav className={isMobile ? "flex flex-col space-y-4" : "hidden md:flex items-center gap-6"}>
       {links.map(link => (
-        (!link.requireAuth || (link.requireAuth)) && (
+        // Only check requireAuth if user is signed out
+        (!link.requireAuth || link.requireAuth === undefined || (link.requireAuth)) && (
           <React.Fragment key={link.href}>
             {isMobile ? (
               <SheetClose asChild>
@@ -242,10 +243,8 @@ const MainNav = () => {
                 <div className="flex flex-col h-full py-6">
                   <Logo className="mb-6" />
                   
-                  {/* Mobile Navigation */}
-                  <SignedIn>
-                    <NavLinks isMobile={true} />
-                  </SignedIn>
+                  {/* Mobile Navigation - Show for all users */}
+                  <NavLinks isMobile={true} />
                   
                   {/* Mobile Auth Buttons */}
                   <div className="mt-auto border-t border-border pt-6">
