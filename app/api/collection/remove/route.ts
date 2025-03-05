@@ -1,7 +1,8 @@
-// app/api/collection/remove/route.ts - Updated for variant support
+// app/api/collection/remove/route.ts
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { RemoveFromCollectionRequestParams, CollectionRemoveResponse } from "@/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,11 +11,18 @@ export async function POST(request: NextRequest) {
     const user = await currentUser();
    
     if (!userId || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      // Fixed response with explicit type
+      const response: CollectionRemoveResponse = {
+        success: false,
+        error: "Unauthorized",
+        newQuantity: 0,
+        variant: 'normal'
+      };
+      return NextResponse.json(response, { status: 401 });
     }
    
     // Parse the request body
-    const body = await request.json();
+    const body: RemoveFromCollectionRequestParams = await request.json();
     const { 
       cardId, 
       quantity = 1, 
@@ -23,7 +31,14 @@ export async function POST(request: NextRequest) {
     } = body;
    
     if (!cardId) {
-      return NextResponse.json({ error: "Card ID is required" }, { status: 400 });
+      // Fixed response with explicit type
+      const response: CollectionRemoveResponse = {
+        success: false,
+        error: "Card ID is required",
+        newQuantity: 0,
+        variant: variant
+      };
+      return NextResponse.json(response, { status: 400 });
     }
    
     // Get the user record from our database
@@ -34,7 +49,14 @@ export async function POST(request: NextRequest) {
    
     // If user doesn't exist or doesn't have a collection, there's nothing to remove
     if (!dbUser || !dbUser.collection) {
-      return NextResponse.json({ error: "Card not found in collection" }, { status: 404 });
+      // Fixed response with explicit type
+      const response: CollectionRemoveResponse = {
+        success: false,
+        error: "Card not found in collection",
+        newQuantity: 0,
+        variant: variant
+      };
+      return NextResponse.json(response, { status: 404 });
     }
    
     const collectionId = dbUser.collection.id;
@@ -51,7 +73,14 @@ export async function POST(request: NextRequest) {
     });
    
     if (!userCard) {
-      return NextResponse.json({ error: "Card variant not found in collection" }, { status: 404 });
+      // Fixed response with explicit type
+      const response: CollectionRemoveResponse = {
+        success: false,
+        error: "Card variant not found in collection",
+        newQuantity: 0,
+        variant: variant
+      };
+      return NextResponse.json(response, { status: 404 });
     }
    
     // Determine how many cards to remove
@@ -97,14 +126,24 @@ export async function POST(request: NextRequest) {
       }
     });
    
-    return NextResponse.json({
+    // Fixed response with explicit type
+    const response: CollectionRemoveResponse = {
       success: true,
       message: result.removed ? "Card variant removed from collection" : "Card variant quantity updated",
       newQuantity: result.newQuantity,
       variant: variant
-    });
+    };
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error removing card from collection:", error);
-    return NextResponse.json({ error: "Failed to remove card from collection" }, { status: 500 });
+    
+    // Fixed response with explicit type
+    const response: CollectionRemoveResponse = {
+      success: false,
+      error: "Failed to remove card from collection",
+      newQuantity: 0,
+      variant: 'normal'
+    };
+    return NextResponse.json(response, { status: 500 });
   }
 }

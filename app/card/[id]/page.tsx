@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+// app/card/[id]/page.tsx
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -13,96 +13,17 @@ import { Card } from '@/components/ui/card';
 import CollectionVariantsButton from '@/components/collection/collection-variants-button';
 import WishlistButton from '@/components/wishlist/wishlist-button';
 import { formatPrice } from '@/lib/utils';
-
+import { 
+  Card as CardType, 
+  Set,
+  getCardPrice,
+  mapMongoCardToInterface,
+  mapMongoSetToInterface 
+} from '@/types';
 
 export const revalidate = 604800;
 
-// Define interfaces for TCGPlayer data
-interface TCGPlayerPriceData {
-  low: number;
-  mid: number;
-  high: number;
-  market: number;
-  directLow: number | null;
-}
-
-interface TCGPlayerPrices {
-  normal?: TCGPlayerPriceData;
-  holofoil?: TCGPlayerPriceData;
-  reverseHolofoil?: TCGPlayerPriceData;
-  '1stEditionHolofoil'?: TCGPlayerPriceData;
-}
-
-interface TCGPlayerData {
-  url: string;
-  updatedAt: string;
-  prices?: TCGPlayerPrices;
-}
-
-interface CardImage {
-  small?: string;
-  large?: string;
-  [key: string]: string | undefined;
-}
-
-interface CardData {
-  id: string;
-  name: string;
-  number: string;
-  supertype: string;
-  subtypes: string[];
-  hp: string | null;
-  types: string[];
-  setId: string;
-  setName: string;
-  artist: string | null;
-  rarity: string;
-  nationalPokedexNumbers: number[];
-  images: CardImage | null;
-  tcgplayer: TCGPlayerData | null;
-  lastUpdated: Date;
-}
-
-interface SetData {
-  id: string;
-  name: string;
-  series: string;
-  releaseDate: string;
-  images?: {
-    logo?: string;
-    symbol?: string;
-  };
-}
-
-// Add this utility function to extract price data
-function getCardPrice(tcgplayer: TCGPlayerData | null, isFoil: boolean = false, isFirstEdition: boolean = false): number | null {
-  if (!tcgplayer || !tcgplayer.prices) return null;
-  
-  const prices = tcgplayer.prices;
-  
-  // Try to get the appropriate price based on card properties
-  if (isFirstEdition && prices['1stEditionHolofoil']) {
-    return prices['1stEditionHolofoil'].market || null;
-  }
-  
-  if (isFoil && prices.holofoil) {
-    return prices.holofoil.market || null;
-  }
-  
-  if (isFoil && prices.reverseHolofoil) {
-    return prices.reverseHolofoil.market || null;
-  }
-  
-  // Default to normal price
-  if (prices.normal) {
-    return prices.normal.market || null;
-  }
-  
-  // If no appropriate price is found, return null
-  return null;
-}
-
-async function getCard(id: string): Promise<CardData | null> {
+async function getCard(id: string): Promise<CardType | null> {
   try {
     const card = await prisma.card.findUnique({
       where: { id },
@@ -112,14 +33,15 @@ async function getCard(id: string): Promise<CardData | null> {
       return null;
     }
 
-    return card as unknown as CardData;
+    // Convert MongoDB document to typed interface
+    return mapMongoCardToInterface(card);
   } catch (error) {
     console.error(`Error fetching card ${id}:`, error);
     return null;
   }
 }
 
-async function getSet(id: string): Promise<SetData | null> {
+async function getSet(id: string): Promise<Set | null> {
   try {
     const set = await prisma.set.findUnique({
       where: { id },
@@ -136,7 +58,8 @@ async function getSet(id: string): Promise<SetData | null> {
       return null;
     }
 
-    return set as unknown as SetData;
+    // Convert MongoDB document to typed interface
+    return mapMongoSetToInterface(set);
   } catch (error) {
     console.error(`Error fetching set ${id}:`, error);
     return null;
@@ -185,12 +108,12 @@ export default async function CardDetailPage({
   // Get the direct TCGPlayer URL from the prices API server-side
   const tcgplayerDirectUrl = await getDirectTCGPlayerUrl(card.id);
 
-  // Cast the tcgplayer data to your interface
-  const tcgplayer = card.tcgplayer;
+  // Get prices from the card's tcgplayer data
+  const tcgplayer = card.tcgplayer || null;
   const prices = tcgplayer?.prices || {};
   const hasPrice = !!(prices.normal || prices.holofoil || prices.reverseHolofoil || prices['1stEditionHolofoil']);
   
-  // Get market price for display in header
+  // Get market price for display in header using our utility function
   const marketPrice = getCardPrice(tcgplayer);
 
   return (
@@ -281,7 +204,7 @@ export default async function CardDetailPage({
                     setName={card.setName}
                     releaseDate={set?.releaseDate || "2000/01/01"} // Fallback date if set not found
                     cardImage={largeImage || smallImage || undefined}
-                    tcgplayer={card.tcgplayer as any}
+                    tcgplayer={card.tcgplayer || null}
                   />
                   <WishlistButton
                     cardId={card.id}

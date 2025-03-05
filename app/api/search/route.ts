@@ -2,73 +2,82 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { SearchCardsRequest, SearchCardsResponse, Pagination } from "@/types";
+import { Card, mapMongoCardToInterface } from "@/types";
 
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    let query = url.searchParams.get("q") || "";
-    let page = parseInt(url.searchParams.get("page") || "1", 10);
-    let pageSize = parseInt(url.searchParams.get("pageSize") || "20", 10);
-    const set = url.searchParams.get("set") || "";
-    const type = url.searchParams.get("type") || "";
-    const rarity = url.searchParams.get("rarity") || "";
+    
+    // Extract search parameters with proper typing
+    const params: SearchCardsRequest = {
+      q: url.searchParams.get("q") || "",
+      page: parseInt(url.searchParams.get("page") || "1", 10),
+      pageSize: parseInt(url.searchParams.get("pageSize") || "20", 10),
+      set: url.searchParams.get("set") || "",
+      type: url.searchParams.get("type") || "",
+      rarity: url.searchParams.get("rarity") || ""
+    };
 
     // --- Input Validation & Sanitization ---
     // Limit maximum query length to 100 characters
     const MAX_QUERY_LENGTH = 100;
-    if (query.length > MAX_QUERY_LENGTH) {
-      query = query.substring(0, MAX_QUERY_LENGTH);
+    if (params.q && params.q.length > MAX_QUERY_LENGTH) {
+      params.q = params.q.substring(0, MAX_QUERY_LENGTH);
     }
 
     // Remove control characters from the query (basic sanitization)
-    query = query.replace(/[\u0000-\u001F\u007F]/g, "");
+    if (params.q) {
+      params.q = params.q.replace(/[\u0000-\u001F\u007F]/g, "");
+    }
 
     // Validate page and pageSize values
-    if (isNaN(page) || page < 1) {
-      page = 1;
+    if (isNaN(params.page as number) || (params.page as number) < 1) {
+      params.page = 1;
     }
+    
     // Limit pageSize to a maximum value (e.g., 100) to prevent abuse
-    if (isNaN(pageSize) || pageSize < 1 || pageSize > 100) {
-      pageSize = 20;
+    if (isNaN(params.pageSize as number) || (params.pageSize as number) < 1 || (params.pageSize as number) > 100) {
+      params.pageSize = 20;
     }
 
     // Skip value for pagination
-    const skip = (page - 1) * pageSize;
+    const skip = ((params.page as number) - 1) * (params.pageSize as number);
 
     // Build search filters using Prisma's typed filter
     const filters: Prisma.CardWhereInput = {};
 
     // Fuzzy search by name (case-insensitive)
-    if (query) {
+    if (params.q) {
       filters.name = {
-        contains: query,
+        contains: params.q,
         mode: "insensitive",
       };
     }
 
     // Filter by set if provided and not 'all'
-    if (set && set !== 'all') {
-      filters.setId = set;
+    if (params.set && params.set !== 'all') {
+      filters.setId = params.set;
     }
 
     // Filter by type if provided and not 'all'
-    if (type && type !== 'all') {
+    if (params.type && params.type !== 'all') {
       filters.types = {
-        has: type,
+        has: params.type,
       };
     }
 
     // Filter by rarity if provided and not 'all'
-    if (rarity && rarity !== 'all') {
-      filters.rarity = rarity;
+    if (params.rarity && params.rarity !== 'all') {
+      filters.rarity = params.rarity;
     }
 
     // Execute search with pagination
-    const [cards, totalCount] = await Promise.all([
+    const [cardDocs, totalCount] = await Promise.all([
       prisma.card.findMany({
         where: filters,
         skip,
-        take: pageSize,
+        take: params.pageSize as number,
         orderBy: {
           name: "asc",
         },
@@ -78,22 +87,42 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // Convert MongoDB documents to our typed Card interface
+    const cards: Card[] = cardDocs.map(mapMongoCardToInterface);
+
     // Calculate total pages
+    const pageSize = params.pageSize as number;
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    return NextResponse.json({
+    // Create properly typed pagination object
+    const pagination: Pagination = {
+      page: params.page as number,
+      pageSize,
+      totalCount,
+      totalPages,
+    };
+
+    // Return properly typed response
+    const response: SearchCardsResponse = {
       cards,
-      pagination: {
-        page,
-        pageSize,
-        totalCount,
-        totalPages,
-      },
-    });
+      pagination
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error searching cards:", error);
     return NextResponse.json(
-      { error: "Failed to search cards" },
+      { 
+        success: false,
+        error: "Failed to search cards",
+        cards: [],
+        pagination: {
+          page: 1,
+          pageSize: 20,
+          totalCount: 0,
+          totalPages: 0
+        }
+      } as SearchCardsResponse,
       { status: 500 }
     );
   }

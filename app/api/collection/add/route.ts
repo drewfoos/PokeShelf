@@ -1,7 +1,12 @@
-// app/api/collection/add/route.ts - Updated version
+// app/api/collection/add/route.ts
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { 
+  AddToCollectionRequestParams, 
+  CollectionModifyResponse,
+  mapMongoUserCardToInterface
+} from "@/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,11 +15,16 @@ export async function POST(request: NextRequest) {
     const user = await currentUser();
    
     if (!userId || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      // Fixed response with correct type structure
+      const response: CollectionModifyResponse = {
+        success: false,
+        error: "Unauthorized"
+      };
+      return NextResponse.json(response, { status: 401 });
     }
    
-    // Parse the request body
-    const body = await request.json();
+    // Parse the request body with proper typing
+    const body: AddToCollectionRequestParams = await request.json();
     const { 
       cardId, 
       quantity = 1, 
@@ -22,11 +32,16 @@ export async function POST(request: NextRequest) {
       isFoil = false, 
       isFirstEdition = false, 
       purchasePrice,
-      variant = "normal" // New field to track specific variant types
+      variant = "normal" // Default to 'normal' if not specified
     } = body;
    
     if (!cardId) {
-      return NextResponse.json({ error: "Card ID is required" }, { status: 400 });
+      // Fixed response with correct type structure
+      const response: CollectionModifyResponse = {
+        success: false,
+        error: "Card ID is required"
+      };
+      return NextResponse.json(response, { status: 400 });
     }
    
     // Get the card to validate it exists
@@ -36,9 +51,16 @@ export async function POST(request: NextRequest) {
     });
    
     if (!card) {
-      return NextResponse.json({ error: "Card not found" }, { status: 404 });
+      // Fixed response with correct type structure
+      const response: CollectionModifyResponse = {
+        success: false,
+        error: "Card not found"
+      };
+      return NextResponse.json(response, { status: 404 });
     }
    
+    // Rest of the function remains the same...
+    
     // Get the user record from our database or create it if it doesn't exist
     let dbUser = await prisma.user.findUnique({
       where: { clerkId: userId },
@@ -106,7 +128,7 @@ export async function POST(request: NextRequest) {
           userCard_collection_card_variant_unique: {
             collectionId: collectionId,
             cardId: cardId,
-            variant: variant, // include variant here
+            variant: variant,
           },
         },
       });
@@ -165,13 +187,26 @@ export async function POST(request: NextRequest) {
       return userCard;
     });
    
-    return NextResponse.json({
+    // Convert the Prisma result to our typed interface
+    const typedUserCard = mapMongoUserCardToInterface(result);
+    
+    // Fixed response with correct type structure
+    const response: CollectionModifyResponse = {
       success: true,
       message: existingUserCard ? "Card quantity updated" : "Card added to collection",
-      card: result
-    });
+      card: typedUserCard
+    };
+    
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error adding card to collection:", error);
-    return NextResponse.json({ error: "Failed to add card to collection" }, { status: 500 });
+    
+    // Fixed response with correct type structure
+    const response: CollectionModifyResponse = {
+      success: false,
+      error: "Failed to add card to collection"
+    };
+    
+    return NextResponse.json(response, { status: 500 });
   }
 }

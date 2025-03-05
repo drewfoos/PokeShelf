@@ -34,43 +34,16 @@ import {
 } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { formatPrice } from '@/lib/utils';
+import { 
+  TCGPlayerData, 
+  CardCondition, 
+  CardVariantType, 
+  CardVariantDisplay,
+  AddToCollectionRequestParams,
+  getCardPrice
+} from '@/types';
 
-// Define proper types for TCGPlayer data structure
-interface TCGPlayerPriceData {
-  low: number;
-  mid: number;
-  high: number;
-  market: number;
-  directLow: number | null;
-}
-
-interface TCGPlayerPrices {
-  normal?: TCGPlayerPriceData;
-  holofoil?: TCGPlayerPriceData;
-  reverseHolofoil?: TCGPlayerPriceData;
-  '1stEditionHolofoil'?: TCGPlayerPriceData;
-  [key: string]: TCGPlayerPriceData | undefined;
-}
-
-interface TCGPlayerData {
-  url: string;
-  updatedAt: string;
-  prices?: TCGPlayerPrices;
-}
-
-// Interface for card variant information
-interface CardVariant {
-  type: string;
-  name: string;
-  description: string;
-  available: boolean;
-  quantity: number;
-  condition: string;
-  imageSample?: string;
-  price?: number | null;
-}
-
-// Interface for collection button props
+// Interface for collection button props with typed properties
 interface CollectionVariantsButtonProps {
   cardId: string;
   cardName: string;
@@ -78,7 +51,7 @@ interface CollectionVariantsButtonProps {
   setName: string;
   releaseDate: string;
   cardImage?: string;
-  tcgplayer?: TCGPlayerData;
+  tcgplayer?: TCGPlayerData | null;
   isInCollection?: boolean;
 }
 
@@ -86,10 +59,10 @@ interface CollectionVariantsButtonProps {
 function getAvailableVariants(
   setId: string, 
   releaseDate: string, 
-  tcgplayer?: TCGPlayerData
-): CardVariant[] {
+  tcgplayer?: TCGPlayerData | null
+): CardVariantDisplay[] {
   const releaseYear = new Date(releaseDate).getFullYear();
-  const variants: CardVariant[] = [];
+  const variants: CardVariantDisplay[] = [];
   
   // Check if set is from 2002 or later (when reverse holos became standard)
   const hasReverseHolo = releaseYear >= 2002;
@@ -112,7 +85,7 @@ function getAvailableVariants(
       available: true,
       quantity: 0,
       condition: 'Near Mint',
-      price: tcgplayer?.prices?.normal?.market || null,
+      price: getCardPrice(tcgplayer),
     });
   }
   
@@ -180,7 +153,7 @@ interface CollectionCheckResponse {
 }
 
 // Condition options for dropdown
-const conditionOptions = [
+const conditionOptions: CardCondition[] = [
   'Near Mint',
   'Lightly Played',
   'Moderately Played',
@@ -203,7 +176,7 @@ export default function CollectionVariantsButton({
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(true);
   const [isInCollectionState, setIsInCollectionState] = useState(isInCollection);
-  const [variants, setVariants] = useState<CardVariant[]>([]);
+  const [variants, setVariants] = useState<CardVariantDisplay[]>([]);
   
   // Initialize available variants based on set information
   useEffect(() => {
@@ -246,7 +219,7 @@ export default function CollectionVariantsButton({
   };
   
   // Update condition for a specific variant
-  const updateVariantCondition = (type: string, condition: string) => {
+  const updateVariantCondition = (type: string, condition: CardCondition) => {
     setVariants(variants.map(variant => 
       variant.type === type 
         ? { ...variant, condition }
@@ -268,18 +241,20 @@ export default function CollectionVariantsButton({
     try {
       // Submit each selected variant as a separate request
       for (const variant of selectedVariants) {
+        const requestData: AddToCollectionRequestParams = {
+          cardId,
+          quantity: variant.quantity,
+          condition: variant.condition,
+          isFoil: variant.type !== 'normal', // All variants except normal are foil
+          variant: variant.type, // Store the specific variant type
+        };
+        
         const response = await fetch('/api/collection/add', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            cardId,
-            quantity: variant.quantity,
-            condition: variant.condition,
-            isFoil: variant.type !== 'normal', // All variants except normal are foil
-            variant: variant.type, // Store the specific variant type
-          }),
+          body: JSON.stringify(requestData),
         });
         
         if (!response.ok) {
@@ -492,7 +467,7 @@ export default function CollectionVariantsButton({
                     {variant.quantity > 0 && (
                       <Select
                         value={variant.condition}
-                        onValueChange={(value) => updateVariantCondition(variant.type, value)}
+                        onValueChange={(value) => updateVariantCondition(variant.type, value as CardCondition)}
                       >
                         <SelectTrigger className="w-28">
                           <SelectValue />
