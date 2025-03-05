@@ -8,17 +8,19 @@ import CardGrid from '@/components/cards/cards-grid'
 import { Button } from '@/components/ui/button'
 import { FilterControls } from './filter-controls'
 import { Prisma } from '@prisma/client'
-
+// Import standardized types
+import { Card, Pagination, mapMongoCardToInterface, mapMongoSetToInterface } from '@/types'
+import type { Set as PokemonSet } from '@/types'
 
 export const revalidate = 604800;
 
 // Fetch a specific Set from the database
-async function getSet(id: string) {
+async function getSet(id: string): Promise<PokemonSet | null> {
   try {
     const set = await prisma.set.findUnique({
       where: { id },
     })
-    return set || null
+    return set ? mapMongoSetToInterface(set) : null
   } catch (error) {
     console.error(`Error fetching set ${id}:`, error)
     return null
@@ -47,7 +49,7 @@ async function getSetCards(
     }
 
     // Get cards and total count simultaneously
-    const [cards, totalCount] = await Promise.all([
+    const [cardDocs, totalCount] = await Promise.all([
       prisma.card.findMany({
         where: filter,
         orderBy: { number: 'asc' },
@@ -56,6 +58,9 @@ async function getSetCards(
       }),
       prisma.card.count({ where: filter }),
     ])
+    
+    // Convert MongoDB documents to our typed Card interface
+    const cards: Card[] = cardDocs.map(mapMongoCardToInterface);
 
     // Get unique rarities for dropdown
     const rarities = await prisma.card.findMany({
@@ -74,15 +79,18 @@ async function getSetCards(
     typesArray.forEach((card) => {
       card.types?.forEach((type) => uniqueTypes.add(type))
     })
+    
+    // Create properly typed pagination object
+    const pagination: Pagination = {
+      page,
+      pageSize,
+      totalCount,
+      totalPages: Math.ceil(totalCount / pageSize),
+    };
 
     return {
       cards,
-      pagination: {
-        page,
-        pageSize,
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize),
-      },
+      pagination,
       filters: {
         rarities: rarities
           .map((r) => r.rarity)
@@ -100,7 +108,7 @@ async function getSetCards(
         pageSize: 20,
         totalCount: 0,
         totalPages: 0,
-      },
+      } as Pagination,
       filters: {
         rarities: [],
         types: [],
@@ -144,24 +152,9 @@ export default async function SetDetailPage({
 
   const { cards, pagination, filters } = cardsData
 
-  // Get logo/symbol if they exist
-  const logo =
-    set.images &&
-    typeof set.images === 'object' &&
-    set.images !== null &&
-    'logo' in set.images &&
-    typeof set.images.logo === 'string'
-      ? set.images.logo
-      : null
-
-  const symbol =
-    set.images &&
-    typeof set.images === 'object' &&
-    set.images !== null &&
-    'symbol' in set.images &&
-    typeof set.images.symbol === 'string'
-      ? set.images.symbol
-      : null
+  // Get logo/symbol using our strongly typed interface
+  const logo = set.images?.logo || null
+  const symbol = set.images?.symbol || null
 
   // Helper for building pagination links
   const createPageUrl = (newPage: number, newRarity?: string, newType?: string) => {

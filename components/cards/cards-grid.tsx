@@ -1,28 +1,11 @@
+// components/cards/cards-grid.tsx
 import React from 'react';
 import CardItem from '@/components/cards/card-item';
-import { JsonValue } from '@prisma/client/runtime/library';
-
-interface PrismaCard {
-  id: string;
-  name: string;
-  number: string;
-  setName: string;
-  rarity: string;
-  types?: string[];
-  images: JsonValue;
-  // Add any other fields that Prisma returns that you might need
-  supertype?: string;
-  subtypes?: string[];
-  hp?: string | null;
-  setId?: string;
-  artist?: string | null;
-  nationalPokedexNumbers?: number[];
-  tcgplayer?: JsonValue;
-  lastUpdated?: Date;
-}
+// Import the standardized Card type
+import { Card as CardType } from '@/types';
 
 interface CardGridProps {
-  cards: PrismaCard[];
+  cards: CardType[];
   isLoading?: boolean;
 }
 

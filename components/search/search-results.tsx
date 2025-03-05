@@ -5,25 +5,13 @@ import Link from 'next/link';
 import CardGrid from '@/components/cards/cards-grid';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { Card } from '@prisma/client';
-
-interface PaginationType {
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
-}
+// Import standardized types
+import { Card, Pagination, SearchCardsRequest } from '@/types';
 
 interface SearchResultsProps {
   cards: Card[];
-  pagination: PaginationType;
-  searchParams: {
-    q?: string;
-    page?: string;
-    set?: string;
-    type?: string;
-    rarity?: string;
-  };
+  pagination: Pagination;
+  searchParams: SearchCardsRequest;
 }
 
 export default function SearchResults({ 

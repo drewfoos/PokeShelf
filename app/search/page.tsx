@@ -6,6 +6,8 @@ import SearchResults from '@/components/search/search-results';
 import SearchFilters from '@/components/search/search-filters';
 import { Separator } from '@/components/ui/separator';
 import { Prisma } from '@prisma/client';
+// Import types and utilities
+import { Card, Pagination, SearchCardsRequest, mapMongoCardToInterface } from '@/types';
 
 // Tell Next.js this should be a dynamic page that's not cached
 export const revalidate = 86400;
@@ -27,13 +29,13 @@ async function searchCards(params: Awaited<SearchPageProps['searchParams']>) {
     // If no query provided at all, return empty results
     if (!q) {
       return {
-        cards: [],
+        cards: [] as Card[],
         pagination: {
           page: 1,
           pageSize: 20,
           totalCount: 0,
           totalPages: 0
-        }
+        } as Pagination
       };
     }
 
@@ -71,7 +73,7 @@ async function searchCards(params: Awaited<SearchPageProps['searchParams']>) {
     const skip = (pageNumber - 1) * pageSize;
 
     // Execute search with pagination
-    const [cards, totalCount] = await Promise.all([
+    const [cardDocs, totalCount] = await Promise.all([
       prisma.card.findMany({
         where: filters,
         skip,
@@ -85,6 +87,9 @@ async function searchCards(params: Awaited<SearchPageProps['searchParams']>) {
       })
     ]);
 
+    // Convert MongoDB documents to our typed Card interface
+    const cards: Card[] = cardDocs.map(mapMongoCardToInterface);
+
     // Calculate total pages
     const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -95,7 +100,7 @@ async function searchCards(params: Awaited<SearchPageProps['searchParams']>) {
         pageSize,
         totalCount,
         totalPages
-      }
+      } as Pagination
     };
   } catch (error) {
     console.error('Error searching cards:', error);
@@ -171,6 +176,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { q = '' } = resolvedSearchParams;
   const isInitialState = !q;
 
+  // Convert string params to the correct types for SearchCardsRequest
+  const typedSearchParams: SearchCardsRequest = {
+    q: resolvedSearchParams.q || '',
+    page: resolvedSearchParams.page ? parseInt(resolvedSearchParams.page) : 1,
+    pageSize: 20,
+    set: resolvedSearchParams.set || '',
+    type: resolvedSearchParams.type || '',
+    rarity: resolvedSearchParams.rarity || ''
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-1.5">
@@ -212,7 +227,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <SearchResults 
             cards={cards} 
             pagination={pagination} 
-            searchParams={resolvedSearchParams} 
+            searchParams={typedSearchParams} 
           />
         )}
       </div>

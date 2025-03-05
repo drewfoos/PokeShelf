@@ -1,36 +1,21 @@
+// components/cards/card-item.tsx
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { JsonValue } from '@prisma/client/runtime/library';
+// Import the standardized Card type
+import { Card as CardType } from '@/types';
 
 interface CardItemProps {
-  card: {
-    id: string;
-    name: string;
-    images: JsonValue;
-    number: string;
-    setName: string;
-    rarity: string;
-    types?: string[];
-    artist?: string | null;
-    tcgplayer?: JsonValue;
-  };
+  card: CardType;
 }
 
 const CardItem: React.FC<CardItemProps> = ({ card }) => {
   const { id, name, images, setName, rarity, artist } = card;
   
-  // Extract image URLs from the JsonValue
-  const smallImage =
-    images &&
-    typeof images === 'object' &&
-    images !== null &&
-    'small' in images &&
-    typeof images.small === 'string'
-      ? images.small
-      : null;
+  // Extract image URLs - images is now properly typed as CardImage
+  const smallImage = images && 'small' in images ? images.small : null;
   
   return (
     <Link href={`/card/${id}`} passHref>
