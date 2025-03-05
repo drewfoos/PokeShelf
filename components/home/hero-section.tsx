@@ -1,29 +1,12 @@
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { SignedIn, SignedOut, SignUpButton } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import prisma from '@/lib/prisma';
-import { JsonValue } from '@prisma/client/runtime/library';
-
-// Interface matching the Prisma Card model
-interface CardType {
-  id: string;
-  name: string;
-  number: string;
-  supertype: string;
-  subtypes: string[];
-  hp: string | null;
-  types: string[];
-  setId: string;
-  setName: string;
-  artist: string | null;
-  rarity: string;
-  nationalPokedexNumbers: number[];
-  images: JsonValue;
-  tcgplayer: JsonValue | null;
-  lastUpdated: Date;
-}
+// Import the Card type from the types folder
+import { Card, mapMongoCardToInterface } from '@/types';
+// Import our new client component
+import FeaturedCardGrid from './featured-card-grid';
 
 // Static list of featured card IDs - including Base Set Charizard
 const FEATURED_CARD_IDS = [
@@ -40,9 +23,9 @@ const FEATURED_CARD_IDS = [
 ];
 
 // Cache this component for a week
-export const revalidate = 604800; // 7 days in seconds
+export const revalidate = 'force-dynamic'; // 7 days in seconds
 
-async function getFeaturedCards() {
+async function getFeaturedCards(): Promise<Card[]> {
   try {
     const cards = await prisma.card.findMany({
       where: {
@@ -52,10 +35,11 @@ async function getFeaturedCards() {
       }
     });
     
-    // Sort cards to match the order in FEATURED_CARD_IDS
+    // Sort cards to match the order in FEATURED_CARD_IDS and map to our Card type
     const sortedCards = FEATURED_CARD_IDS
       .map(id => cards.find(card => card.id === id))
-      .filter((card): card is CardType => card !== undefined);
+      .filter(Boolean)
+      .map(card => mapMongoCardToInterface(card));
     
     return sortedCards;
   } catch (error) {
@@ -89,85 +73,24 @@ const HeroSection = async () => {
               </SignUpButton>
             </SignedOut>
             <SignedIn>
-              <Link href="/collection">
-                <Button size="lg" className="shadow-md bg-primary hover:bg-primary/90">
-                  My Collection
-                </Button>
-              </Link>
-            </SignedIn>
-            <Link href="/sets">
-              <Button size="lg" variant="outline" className="shadow-sm hover:shadow-md">
-                Browse Sets
+              <Button size="lg" className="shadow-md bg-primary hover:bg-primary/90" asChild>
+                <Link href="/collection">My Collection</Link>
               </Button>
-            </Link>
+            </SignedIn>
+            <Button size="lg" variant="outline" className="shadow-sm hover:shadow-md" asChild>
+              <Link href="/sets">Browse Sets</Link>
+            </Button>
           </div>
           
           <div className="w-full max-w-3xl mx-auto mt-12 relative">
             <div className="relative h-64 sm:h-80 overflow-hidden rounded-xl shadow-lg">
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-violet-500/10 z-10"></div>
+              {/* Gradient overlay with pointer-events disabled */}
+              <div
+                className="absolute inset-0 bg-gradient-to-r from-primary/10 to-violet-500/10 z-10"
+                style={{ pointerEvents: 'none' }}
+              ></div>
               <div className="absolute inset-0 flex items-center justify-center">
-                {cards.length > 0 ? (
-                  <div className="grid grid-cols-3 md:grid-cols-5 gap-3 p-4 transform rotate-3">
-                    {cards.map((card, i) => {
-                      // Extract large image URL when available for better quality
-                      let cardImage = null;
-                      if (card.images && typeof card.images === 'object' && card.images !== null) {
-                        // First try to get large image for better quality
-                        if ('large' in card.images && typeof card.images.large === 'string') {
-                          cardImage = card.images.large;
-                        } 
-                        // Fall back to small image if large is not available
-                        else if ('small' in card.images && typeof card.images.small === 'string') {
-                          cardImage = card.images.small;
-                        }
-                      }
-                      
-                      return (
-                        <Link href={`/card/${card.id}`} key={card.id} prefetch={false}>
-                          <div 
-                            className="w-24 h-32 rounded-lg bg-white shadow-md transform transition-transform hover:scale-105 overflow-hidden"
-                            style={{ 
-                              transformOrigin: 'center', 
-                              transform: `rotate(${(i % 2 === 0 ? 2 : -2)}deg)` 
-                            }}
-                          >
-                            {cardImage ? (
-                              <div className="relative w-full h-full">
-                                <Image
-                                  src={cardImage}
-                                  alt={card.name}
-                                  fill
-                                  className="object-contain p-0.5"
-                                  sizes="96px"
-                                  priority={i < 3} // Load first 3 cards with priority
-                                  quality={75}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <span className="text-xs text-muted-foreground">{card.name}</span>
-                              </div>
-                            )}
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  // Fallback placeholders if no cards are found
-                  <div className="grid grid-cols-3 md:grid-cols-5 gap-3 p-4 transform rotate-3">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-24 h-32 rounded-lg bg-white shadow-md transform transition-transform"
-                        style={{
-                          transformOrigin: 'center',
-                          transform: `rotate(${(i % 2 === 0 ? 2 : -2)}deg)`
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
+                <FeaturedCardGrid cards={cards} />
               </div>
             </div>
           </div>
