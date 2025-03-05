@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/collection/page.tsx
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";

@@ -37,7 +37,6 @@ import { formatPrice } from '@/lib/utils';
 import { 
   TCGPlayerData, 
   CardCondition, 
-  CardVariantType, 
   CardVariantDisplay,
   AddToCollectionRequestParams,
   getCardPrice
