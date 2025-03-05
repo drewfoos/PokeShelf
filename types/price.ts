@@ -54,7 +54,7 @@ export interface TCGPlayerPriceData {
    * @returns The appropriate market price or null if not available
    */
   export function getCardPrice(
-    tcgplayer: TCGPlayerData | null,
+    tcgplayer: TCGPlayerData | null | undefined,
     isFoil = false,
     isFirstEdition = false
   ): number | null {
