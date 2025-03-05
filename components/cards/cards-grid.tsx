@@ -1,6 +1,8 @@
-// components/cards/cards-grid.tsx
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import CardItem from '@/components/cards/card-item';
+import CollectionVariantsDialog from '@/components/collection/collection-variants-dialog';
 // Import the standardized Card type
 import { Card as CardType } from '@/types';
 
@@ -16,13 +18,32 @@ interface Placeholder {
 }
 
 const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
+  // State to track which card to show the variants dialog for
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Find the selected card in the cards array
+  const selectedCard = selectedCardId ? cards.find(card => card.id === selectedCardId) : null;
+
+  // Handle adding a variant
+  const handleAddVariant = (cardId: string) => {
+    setSelectedCardId(cardId);
+    setIsDialogOpen(true);
+  };
+
+  // Handle closing the dialog
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedCardId(null);
+  };
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {Array.from({ length: 12 }).map((_, i) => (
           <div 
             key={i} 
-            className="aspect-[3/4] rounded-md bg-muted animate-pulse"
+            className="aspect-[3/4] rounded-lg bg-muted animate-pulse"
           />
         ))}
       </div>
@@ -44,7 +65,7 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
     sm: 3,     // sm:grid-cols-3
     md: 4,     // md:grid-cols-4
     lg: 5,     // lg:grid-cols-5
-    xl: 6      // xl:grid-cols-6
+    xl: 5      // (keeping xl at 5 columns for better visibility)
   };
 
   // Use the largest cards-per-row value to calculate needed placeholders
@@ -60,18 +81,35 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
       }));
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-      {cards.map((card) => (
-        <CardItem key={card.id} card={card} />
-      ))}
-      
-      {/* Invisible placeholders to maintain grid alignment */}
-      {placeholders.map((placeholder: Placeholder) => (
-        <div key={placeholder.id} className="invisible" aria-hidden="true">
-          {/* Placeholder to maintain grid layout */}
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {cards.map((card) => (
+          <CardItem key={card.id} card={card} onAddVariant={handleAddVariant} />
+        ))}
+        
+        {/* Invisible placeholders to maintain grid alignment */}
+        {placeholders.map((placeholder: Placeholder) => (
+          <div key={placeholder.id} className="invisible" aria-hidden="true">
+            {/* Placeholder to maintain grid layout */}
+          </div>
+        ))}
+      </div>
+
+      {/* Variants Dialog */}
+      {selectedCard && (
+        <CollectionVariantsDialog
+          isOpen={isDialogOpen}
+          onClose={handleCloseDialog}
+          cardId={selectedCard.id}
+          cardName={selectedCard.name}
+          setId={selectedCard.setId}
+          setName={selectedCard.setName}
+          releaseDate={selectedCard.releaseDate || "2000/01/01"}
+          cardImage={selectedCard.images?.large || selectedCard.images?.small || undefined}
+          tcgplayer={selectedCard.tcgplayer || null}
+        />
+      )}
+    </>
   );
 };
 

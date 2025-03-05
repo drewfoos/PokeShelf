@@ -2,11 +2,12 @@ import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import prisma from '@/lib/prisma'
 import CardGrid from '@/components/cards/cards-grid'
 import { Button } from '@/components/ui/button'
 import { FilterControls } from './filter-controls'
+import SetPagination from '@/components/sets/set-pagination'
 import { Prisma } from '@prisma/client'
 // Import standardized types
 import { Card, Pagination, mapMongoCardToInterface, mapMongoSetToInterface } from '@/types'
@@ -27,6 +28,7 @@ async function getSet(id: string): Promise<PokemonSet | null> {
   }
 }
 
+
 // Fetch Cards in a Set with pagination and filtering
 async function getSetCards(
   setId: string,
@@ -35,7 +37,6 @@ async function getSetCards(
 ) {
   try {
     const pageSize = 20 // Number of cards per page
-    const skip = (page - 1) * pageSize
 
     // Build filter using Prisma's CardWhereInput
     const filter: Prisma.CardWhereInput = { setId }
@@ -48,19 +49,27 @@ async function getSetCards(
       filter.types = { has: filters.type }
     }
 
-    // Get cards and total count simultaneously
-    const [cardDocs, totalCount] = await Promise.all([
+    // Get ALL cards for this set that match the filters (without pagination)
+    // so we can sort them properly before pagination
+    const [allCardDocs, totalCount] = await Promise.all([
       prisma.card.findMany({
         where: filter,
-        orderBy: { number: 'asc' },
-        skip,
-        take: pageSize,
       }),
       prisma.card.count({ where: filter }),
     ])
     
     // Convert MongoDB documents to our typed Card interface
-    const cards: Card[] = cardDocs.map(mapMongoCardToInterface);
+    const allCards: Card[] = allCardDocs.map(mapMongoCardToInterface);
+    
+    // Sort all cards by number properly
+    allCards.sort((a, b) => {
+      return a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    
+    // Apply pagination AFTER sorting
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const cards = allCards.slice(startIndex, endIndex);
 
     // Get unique rarities for dropdown
     const rarities = await prisma.card.findMany({
@@ -155,21 +164,6 @@ export default async function SetDetailPage({
   // Get logo/symbol using our strongly typed interface
   const logo = set.images?.logo || null
   const symbol = set.images?.symbol || null
-
-  // Helper for building pagination links
-  const createPageUrl = (newPage: number, newRarity?: string, newType?: string) => {
-    const params = new URLSearchParams()
-    params.set('page', newPage.toString())
-
-    if (newRarity && newRarity !== 'all') {
-      params.set('rarity', newRarity)
-    }
-    if (newType && newType !== 'all') {
-      params.set('type', newType)
-    }
-
-    return `?${params.toString()}`
-  }
 
   return (
     <div className="space-y-8">
@@ -271,35 +265,17 @@ export default async function SetDetailPage({
         {/* Render the card grid */}
         <CardGrid cards={cards} />
 
-        {/* Pagination Controls */}
+        {/* Enhanced Pagination Controls - fixed for Server Components */}
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between mt-8">
-            <div className="text-sm text-muted-foreground">
-              Showing {(pagination.page - 1) * pagination.pageSize + 1}-
-              {Math.min(pagination.page * pagination.pageSize, pagination.totalCount)} of{' '}
-              {pagination.totalCount} cards
-            </div>
-
-            <div className="flex items-center gap-2">
-              {pagination.page > 1 && (
-                <Link href={createPageUrl(pagination.page - 1, rarity, type)}>
-                  <Button variant="outline" size="sm">
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Previous
-                  </Button>
-                </Link>
-              )}
-
-              {pagination.page < pagination.totalPages && (
-                <Link href={createPageUrl(pagination.page + 1, rarity, type)}>
-                  <Button variant="outline" size="sm">
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
+          <SetPagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            baseUrl={`/sets/${setId}`}
+            itemCount={pagination.totalCount}
+            pageSize={pagination.pageSize}
+            rarity={rarity}
+            type={type}
+          />
         )}
       </div>
     </div>

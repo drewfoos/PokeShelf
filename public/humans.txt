@@ -1,0 +1,9 @@
+/* TEAM */
+Site: Pokeshelf
+Description: A Pokémon tracking app to manage your collection, wishlist, and check prices.
+Developer: Andrew Dryfoos
+Technologies: Next.js 15, Vercel, MongoDB, Clerk
+Contact: dryfoosa@gmail.com
+
+/* THANKS */
+Thanks to all contributors and open-source projects that made this app possible.
