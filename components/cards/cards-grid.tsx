@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@clerk/nextjs';
 import CardItem from '@/components/cards/card-item';
 // Import the standardized Card type
 import { Card as CardType } from '@/types';
@@ -18,8 +17,6 @@ interface Placeholder {
 }
 
 const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
-  const { isLoaded, isSignedIn } = useAuth();
-  
   // Handle adding a variant
   const handleAddVariant = (cardId: string) => {
     // Just track the event - we don't need to manage a dialog anymore
