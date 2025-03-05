@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   SignInButton,
@@ -10,7 +11,7 @@ import {
   SignedOut,
   UserButton
 } from '@clerk/nextjs';
-import { Search, Menu, LayoutGrid } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -32,49 +33,19 @@ import AdminNavLink from './admin-nav-link';
 // Directly import DialogTitle since Sheet may use Dialog internally
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 
-// Logo component using external SVG file
+// Logo component using Next.js Image component
 const Logo = ({ className = '' }: { className?: string }) => (
-  <Link href="/" className={`flex items-center gap-2 ${className}`}>
-    <div className="relative h-9 w-9 flex items-center justify-center">
-      <img 
+  <Link href="/" className={`inline-flex items-center gap-2.5 ${className}`}>
+    <div className="flex items-center justify-center w-8 h-8">
+      <Image 
         src="/pokeshelf-logo.svg" 
         alt="PokéShelf Logo" 
-        className="h-full w-auto"
+        width={32} 
+        height={32}
+        priority
       />
     </div>
-    <span className="text-xl md:text-2xl font-bold tracking-tight">
-      poké<span className="text-primary">shelf</span>
-    </span>
-  </Link>
-);
-
-// Alternative logos - kept for reference but not used in current implementation
-const CardStackLogo = () => (
-  <Link href="/" className="flex items-center gap-2">
-    <div className="relative">
-      {/* Back card */}
-      <div className="absolute -right-0.5 -bottom-0.5 h-8 w-6 rounded-md border-2 border-muted-foreground/70 bg-background transform rotate-6"></div>
-      {/* Middle card */}
-      <div className="absolute -left-0.5 -bottom-0.5 h-8 w-6 rounded-md border-2 border-primary/70 bg-background transform -rotate-6"></div>
-      {/* Front card */}
-      <div className="relative h-8 w-6 rounded-md border-2 border-primary bg-background">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-primary"></div>
-        <div className="absolute bottom-1 left-1 right-1 h-1.5 rounded-sm bg-primary/20"></div>
-      </div>
-    </div>
-    <span className="text-xl md:text-2xl font-bold tracking-tight">
-      poké<span className="text-primary">shelf</span>
-    </span>
-  </Link>
-);
-
-// Modern grid logo representing a collection
-const CollectionGridLogo = () => (
-  <Link href="/" className="flex items-center gap-2">
-    <div className="relative flex items-center justify-center h-8 w-8 rounded-md bg-background border-2 border-primary">
-      <LayoutGrid className="h-5 w-5 text-primary" />
-    </div>
-    <span className="text-xl md:text-2xl font-bold tracking-tight">
+    <span className="inline-block text-xl md:text-2xl font-bold tracking-tight translate-y-[1px]">
       poké<span className="text-primary">shelf</span>
     </span>
   </Link>
