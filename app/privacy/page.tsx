@@ -2,7 +2,6 @@ import React from 'react';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { Card } from '@/components/ui/card';
 
 export default function PrivacyPage() {
   const currentDate = new Date().toLocaleDateString('en-US', {

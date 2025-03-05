@@ -12,7 +12,7 @@ import {
   DialogTitle 
 } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
-import { Plus, Minus, Loader2, HelpCircle, Info } from 'lucide-react';
+import { Plus, Minus, Loader2, Info } from 'lucide-react';
 import {
   Select,
   SelectContent,

@@ -2,11 +2,8 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { SignInButton } from '@clerk/nextjs';
 import CardItem from '@/components/cards/card-item';
 import CollectionVariantsDialog from '@/components/collection/collection-variants-dialog';
-import { Button } from '@/components/ui/button';
-import { Sparkles } from 'lucide-react';
 // Import the standardized Card type
 import { Card as CardType } from '@/types';
 
