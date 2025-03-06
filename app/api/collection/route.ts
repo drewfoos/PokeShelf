@@ -1,5 +1,5 @@
 // app/api/collection/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser, getCurrentDbUser } from '@/lib/auth';
 import { 
