@@ -6,12 +6,17 @@ import { formatPrice } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronRight, Plus, Search } from "lucide-react";
-import CollectionCardItem from '@/components/collection/collection-card-item';
+import { Separator } from "@/components/ui/separator";
+import { ChevronRight, Filter, Grid, List, Plus, Search, SortDesc, TrendingUp } from "lucide-react";
+import CollectionCardGrid from '@/components/collection/collection-card-grid';
+import CollectionStats from '@/components/collection/collection-stats';
+import CollectionSetView from '@/components/collection/collection-set-view';
 import { getAuthenticatedUser, getCurrentDbUser } from '@/lib/auth';
 // Import standardized types
 import { 
+  Card as CardType,
   GroupedCard,
+  UserCollection,
   mapMongoCardToInterface,
   mapMongoUserCardToInterface
 } from '@/types';
@@ -30,7 +35,6 @@ async function getUserCollection() {
 
   try {
     // Get the user from our database using getCurrentDbUser helper
-    // This will create the user if they don't exist
     const dbUser = await getCurrentDbUser();
     
     if (!dbUser) {
@@ -106,17 +110,106 @@ async function getUserCollection() {
     // Get the 10 most recently updated cards for the recent tab
     const recentCards = groupedCards.slice(0, 10);
     
+    // Get set statistics for the collection
+    const setStats = await getCollectionSetStats(collection);
+    
     return {
       user: userWithCollection,
       collection: collection,
       recentCards,
-      groupedCards
+      groupedCards,
+      setStats
     };
   } catch (error) {
     console.error("Error fetching or creating user collection:", error);
     return null;
   }
 }
+
+// Function to get statistics about sets in the collection
+async function getCollectionSetStats(collection: UserCollection) {
+    if (!collection) return [];
+    
+    // Get cards in the collection with their set information
+    const userCards = await prisma.userCard.findMany({
+      where: { collectionId: collection.id },
+      include: {
+        card: {
+          include: {
+            set: true
+          }
+        }
+      }
+    });
+    
+    // Extract unique set IDs
+    const setMap = new Map();
+    userCards.forEach(userCard => {
+      if (userCard.card?.set) {
+        setMap.set(userCard.card.set.id, userCard.card.set);
+      }
+    });
+    
+    // If no sets, return empty array
+    if (setMap.size === 0) return [];
+    
+    // For each set, count cards in collection and build the SetStat objects
+    const setStats = [];
+    
+    for (const [setId, set] of setMap.entries()) {
+      // Count user cards from this set
+      const cardsInCollection = userCards.filter(uc => uc.card?.set?.id === setId).length;
+      
+      // Get total cards in set
+      const totalInSet = set.printedTotal;
+      
+      // Calculate estimated value
+      const userCardsInSet = userCards.filter(uc => uc.card?.set?.id === setId);
+      
+      let estimatedValue = 0;
+      userCardsInSet.forEach(userCard => {
+        if (userCard.purchasePrice) {
+          estimatedValue += userCard.purchasePrice * userCard.quantity;
+        } else if (userCard.card?.tcgplayer) {
+          const tcgplayer = userCard.card.tcgplayer as any;
+          if (tcgplayer.prices) {
+            if (userCard.variant === 'holofoil' && tcgplayer.prices.holofoil?.market) {
+              estimatedValue += tcgplayer.prices.holofoil.market * userCard.quantity;
+            } else if (userCard.variant === 'reverseHolofoil' && tcgplayer.prices.reverseHolofoil?.market) {
+              estimatedValue += tcgplayer.prices.reverseHolofoil.market * userCard.quantity;
+            } else if (tcgplayer.prices.normal?.market) {
+              estimatedValue += tcgplayer.prices.normal.market * userCard.quantity;
+            }
+          }
+        }
+      });
+      
+      // Ensure we handle the image fields correctly
+      let images = null;
+      if (set.images) {
+        images = {
+          symbol: set.images.symbol || '',
+          logo: set.images.logo || ''
+        };
+      }
+      
+      // Create the SetStat object with the right structure
+      setStats.push({
+        id: setId,
+        name: set.name,
+        series: set.series,
+        releaseDate: set.releaseDate,
+        totalInSet,
+        cardsInCollection,
+        percentComplete: totalInSet > 0 ? (cardsInCollection / totalInSet) * 100 : 0,
+        estimatedValue,
+        images
+      });
+    }
+    
+    // Sort by completion percentage (descending)
+    return setStats.sort((a, b) => b.percentComplete - a.percentComplete);
+  }
 
 export default async function CollectionPage() {
   // Get the authenticated user
@@ -143,7 +236,7 @@ export default async function CollectionPage() {
     );
   }
   
-  const { collection, recentCards, groupedCards } = data;
+  const { collection, recentCards, groupedCards, setStats } = data;
 
   // Make sure collection is defined (TypeScript safety)
   if (!collection) {
@@ -167,6 +260,12 @@ export default async function CollectionPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">My Collection</h1>
         <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/collection/manage">
+              <Filter className="h-4 w-4 mr-2" />
+              Filter
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/search">
               <Search className="h-4 w-4 mr-2" />
@@ -177,52 +276,40 @@ export default async function CollectionPage() {
       </div>
       
       {/* Collection Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Cards</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{collection.totalCards}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Unique Cards</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{collection.uniqueCards}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Estimated Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatPrice(collection.estimatedValue)}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <CollectionStats collection={collection} />
       
       <Tabs defaultValue="recent" className="w-full">
-        <TabsList>
-          <TabsTrigger value="recent">Recently Added</TabsTrigger>
-          <TabsTrigger value="all">All Cards</TabsTrigger>
-          <TabsTrigger value="sets">By Set</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="recent" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            <span>Recent</span>
+          </TabsTrigger>
+          <TabsTrigger value="all" className="flex items-center gap-2">
+            <Grid className="h-4 w-4" />
+            <span>All Cards</span>
+          </TabsTrigger>
+          <TabsTrigger value="sets" className="flex items-center gap-2">
+            <List className="h-4 w-4" />
+            <span>By Set</span>
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="recent" className="mt-6">
           {recentCards.length > 0 ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {recentCards.map((item) => (
-                  <CollectionCardItem 
-                    key={item.card.id} 
-                    card={item.card} 
-                    variants={item.variants}
-                  />
-                ))}
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Recently Added</h2>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/collection/all">
+                    View All
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
               </div>
+              
+              <Separator />
+              
+              <CollectionCardGrid cards={recentCards} />
               
               <div className="flex justify-center mt-6">
                 <Button variant="outline" asChild>
@@ -240,14 +327,18 @@ export default async function CollectionPage() {
         
         <TabsContent value="all" className="mt-6">
           {groupedCards.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {groupedCards.map((item) => (
-                <CollectionCardItem 
-                  key={item.card.id} 
-                  card={item.card} 
-                  variants={item.variants}
-                />
-              ))}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">All Cards ({collection.uniqueCards})</h2>
+                <Button variant="outline" size="sm">
+                  <SortDesc className="h-4 w-4 mr-2" />
+                  Sort
+                </Button>
+              </div>
+              
+              <Separator />
+              
+              <CollectionCardGrid cards={groupedCards} className="grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" />
             </div>
           ) : (
             <EmptyCollection />
@@ -255,24 +346,23 @@ export default async function CollectionPage() {
         </TabsContent>
         
         <TabsContent value="sets" className="mt-6">
-          <div className="text-center py-12 border rounded-lg bg-card">
-            <h3 className="text-xl font-medium mb-2">Set view coming soon</h3>
-            <p className="text-muted-foreground mb-6">
-              We&apos;re working on a way to view your collection organized by sets.
-            </p>
-          </div>
+          {setStats && setStats.length > 0 ? (
+            <CollectionSetView sets={setStats} />
+          ) : (
+            <EmptyCollection message="Add cards to your collection to see them organized by set." />
+          )}
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function EmptyCollection() {
+function EmptyCollection({ message }: { message?: string }) {
   return (
     <div className="text-center py-12 border rounded-lg bg-card">
       <h3 className="text-xl font-medium mb-2">Your collection is empty</h3>
       <p className="text-muted-foreground mb-6">
-        Start adding cards to track your Pokémon collection
+        {message || "Start adding cards to track your Pokémon collection"}
       </p>
       <Button asChild>
         <Link href="/sets">
