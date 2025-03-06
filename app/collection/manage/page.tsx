@@ -182,17 +182,27 @@ async function getUserCollection(
   }
 }
 
+// Update the interface for Next.js 15 page props
+interface PageProps {
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
 export default async function CollectionManagePage({
   searchParams
-}: {
-  searchParams: { 
-    set?: string;
-    rarity?: string;
-    type?: string;
-    variant?: string;
-    condition?: string;
-  }
-}) {
+}: PageProps) {
+  // First await the searchParams Promise
+  const resolvedParams = await searchParams;
+  
+  // Convert searchParams to the expected format
+  const filters = {
+    set: typeof resolvedParams.set === 'string' ? resolvedParams.set : undefined,
+    rarity: typeof resolvedParams.rarity === 'string' ? resolvedParams.rarity : undefined,
+    type: typeof resolvedParams.type === 'string' ? resolvedParams.type : undefined,
+    variant: typeof resolvedParams.variant === 'string' ? resolvedParams.variant : undefined,
+    condition: typeof resolvedParams.condition === 'string' ? resolvedParams.condition : undefined,
+  };
+  
   // Get the authenticated user
   const authUser = await getAuthenticatedUser();
   
@@ -201,7 +211,7 @@ export default async function CollectionManagePage({
     redirect("/sign-in?redirect=/collection/manage");
   }
   
-  const data = await getUserCollection(searchParams);
+  const data = await getUserCollection(filters);
   
   if (!data) {
     return (
@@ -217,8 +227,8 @@ export default async function CollectionManagePage({
     );
   }
   
-  const { groupedCards, filters } = data;
-  const hasFilters = Object.values(searchParams).some(value => value != null);
+  const { groupedCards, filters: filterOptions } = data;
+  const hasFilters = Object.values(filters).some(value => value != null);
 
   return (
     <div className="space-y-6">
@@ -238,7 +248,7 @@ export default async function CollectionManagePage({
           <CardTitle className="text-lg">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <CollectionFilters filters={filters} currentFilters={searchParams} />
+          <CollectionFilters filters={filterOptions} currentFilters={filters} />
         </CardContent>
       </Card>
       
