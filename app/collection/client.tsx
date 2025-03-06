@@ -40,10 +40,21 @@ export default function CollectionPageClient() {
   const [selectedRarity, setSelectedRarity] = useState(rarity);
   
   // State for collection data (will be loaded via useEffect)
-  const [collection, setCollection] = useState<null | any>(null);
   const [cards, setCards] = useState<GroupedCard[]>([]);
   const [filteredCards, setFilteredCards] = useState<GroupedCard[]>([]);
-  const [setStats, setSetStats] = useState<any[]>([]);
+  const [setStats, setSetStats] = useState<Array<{
+    id: string;
+    name: string;
+    series: string;
+    releaseDate: string;
+    totalInSet: number;
+    cardsInCollection: number;
+    percentComplete: number;
+    images: {
+      symbol?: string;
+      logo?: string;
+    } | null;
+  }>>([]);
   const [filterOptions, setFilterOptions] = useState({
     sets: [] as {id: string, name: string}[],
     types: [] as string[],
@@ -71,7 +82,6 @@ export default function CollectionPageClient() {
         }
         
         // Set collection data
-        setCollection(data.collection);
         setCards(data.groupedCards || []);
         setSetStats(data.setStats || []);
         
