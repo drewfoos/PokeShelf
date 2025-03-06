@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CollectionFilters from '@/components/collection/collection-filters';
@@ -52,7 +53,7 @@ async function getUserCollection(
     }
     
     // Build the query - we'll manually filter later
-    const userCardWhere: any = { collectionId: userWithCollection.collection.id };
+    const userCardWhere: Record<string, unknown> = { collectionId: userWithCollection.collection.id };
     
     // Apply variant and condition filters to the Prisma query if provided
     if (filters.variant) {
@@ -266,10 +267,14 @@ export default async function CollectionManagePage({
                   <Link href={`/card/${groupedCard.card.id}`} className="block p-2">
                     {groupedCard.card.images?.small ? (
                       <div className="aspect-[3/4] relative rounded overflow-hidden">
-                        <img 
+                        <Image 
                           src={groupedCard.card.images.small} 
                           alt={groupedCard.card.name}
-                          className="object-contain w-full h-full"
+                          fill
+                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 200px"
+                          className="object-contain"
+                          quality={70}
+                          priority={false}
                         />
                       </div>
                     ) : (

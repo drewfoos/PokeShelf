@@ -2,10 +2,8 @@
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
-import { formatPrice } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ChevronRight, Filter, Grid, List, Plus, Search, SortDesc, TrendingUp } from "lucide-react";
 import CollectionCardGrid from '@/components/collection/collection-card-grid';
@@ -14,9 +12,9 @@ import CollectionSetView from '@/components/collection/collection-set-view';
 import { getAuthenticatedUser, getCurrentDbUser } from '@/lib/auth';
 // Import standardized types
 import { 
-  Card as CardType,
   GroupedCard,
   UserCollection,
+  TCGPlayerData,
   mapMongoCardToInterface,
   mapMongoUserCardToInterface
 } from '@/types';
@@ -171,7 +169,8 @@ async function getCollectionSetStats(collection: UserCollection) {
         if (userCard.purchasePrice) {
           estimatedValue += userCard.purchasePrice * userCard.quantity;
         } else if (userCard.card?.tcgplayer) {
-          const tcgplayer = userCard.card.tcgplayer as any;
+          // Use TCGPlayerData type and properly access prices
+          const tcgplayer = userCard.card.tcgplayer as unknown as TCGPlayerData;
           if (tcgplayer.prices) {
             if (userCard.variant === 'holofoil' && tcgplayer.prices.holofoil?.market) {
               estimatedValue += tcgplayer.prices.holofoil.market * userCard.quantity;
