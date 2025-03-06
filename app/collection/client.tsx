@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Grid, List, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { 
   Select, 
@@ -17,8 +17,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import CollectionCardGrid from '@/components/collection/collection-card-grid';
 import CollectionSetView from '@/components/collection/collection-set-view';
+import CollectionCardGridWrapper from './collection-card-grid-wrapper';
 // Import standardized types
 import { GroupedCard } from '@/types';
 
@@ -38,6 +38,8 @@ export default function CollectionPageClient() {
   const [selectedSet, setSelectedSet] = useState(set || 'all');
   const [selectedType, setSelectedType] = useState(type || 'all');
   const [selectedRarity, setSelectedRarity] = useState(rarity || 'all');
+  // Add missing state for filters visibility
+  const [showFilters, setShowFilters] = useState(false);
   
   // State for collection data (will be loaded via useEffect)
   const [cards, setCards] = useState<GroupedCard[]>([]);
@@ -63,65 +65,74 @@ export default function CollectionPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Function to refresh data
+  const refreshData = async () => {
+    setLoading(true);
+    
+    try {
+      const response = await fetch('/api/collection');
+      
+      if (!response.ok) {
+        throw new Error('Failed to load collection');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load collection');
+      }
+      
+      // Set collection data
+      setCards(data.groupedCards || []);
+      setSetStats(data.setStats || []);
+      
+      // Extract filter options
+      const uniqueSets = new Map();
+      const uniqueTypes = new Set<string>();
+      const uniqueRarities = new Set<string>();
+      
+      data.groupedCards.forEach((item: GroupedCard) => {
+        // Add set
+        uniqueSets.set(item.card.setId, {
+          id: item.card.setId,
+          name: item.card.setName
+        });
+        
+        // Add types
+        if (item.card.types) {
+          item.card.types.forEach(type => uniqueTypes.add(type));
+        }
+        
+        // Add rarity
+        if (item.card.rarity) {
+          uniqueRarities.add(item.card.rarity);
+        }
+      });
+      
+      setFilterOptions({
+        sets: Array.from(uniqueSets.values()),
+        types: Array.from(uniqueTypes),
+        rarities: Array.from(uniqueRarities)
+      });
+      
+      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setLoading(false);
+    }
+  };
+  
   // Load collection data
   useEffect(() => {
-    async function loadCollection() {
-      setLoading(true);
-      
-      try {
-        const response = await fetch('/api/collection');
-        
-        if (!response.ok) {
-          throw new Error('Failed to load collection');
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-          throw new Error(data.error || 'Failed to load collection');
-        }
-        
-        // Set collection data
-        setCards(data.groupedCards || []);
-        setSetStats(data.setStats || []);
-        
-        // Extract filter options
-        const uniqueSets = new Map();
-        const uniqueTypes = new Set<string>();
-        const uniqueRarities = new Set<string>();
-        
-        data.groupedCards.forEach((item: GroupedCard) => {
-          // Add set
-          uniqueSets.set(item.card.setId, {
-            id: item.card.setId,
-            name: item.card.setName
-          });
-          
-          // Add types
-          if (item.card.types) {
-            item.card.types.forEach(type => uniqueTypes.add(type));
-          }
-          
-          // Add rarity
-          if (item.card.rarity) {
-            uniqueRarities.add(item.card.rarity);
-          }
-        });
-        
-        setFilterOptions({
-          sets: Array.from(uniqueSets.values()),
-          types: Array.from(uniqueTypes),
-          rarities: Array.from(uniqueRarities)
-        });
-        
-        setLoading(false);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        setLoading(false);
-      }
-    }
+    refreshData();
     
-    loadCollection();
+    // Set up event listeners for collection updates
+    window.addEventListener('collection-updated', refreshData);
+    
+    // Clean up event listener
+    return () => {
+      window.removeEventListener('collection-updated', refreshData);
+    };
   }, []);
   
   // Filter cards when search parameters change
@@ -218,30 +229,48 @@ export default function CollectionPageClient() {
         <h1 className="text-3xl font-bold tracking-tight">My Collection</h1>
       </div>
       
-      {/* Search Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Search Collection</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="search">Card Name</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="search"
-                  placeholder="Search by card name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="flex-1"
-                />
-                <Button type="submit">
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </Button>
-              </div>
-            </div>
-            
+      {/* Google-like Search Bar */}
+      <div className="rounded-full border border-gray-300 shadow-sm hover:shadow-md transition-shadow px-4 py-2 flex items-center">
+        <Search className="h-5 w-5 text-muted-foreground mr-2" />
+        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+          <Input
+            id="search"
+            placeholder="Search your collection..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1 border-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 pl-0"
+          />
+          <Button type="submit" variant="ghost" size="sm" className="text-primary">
+            Search
+          </Button>
+          {hasFilters && (
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm"
+              onClick={clearFilters}
+              className="text-muted-foreground"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="text-primary"
+          >
+            {showFilters ? "Hide filters" : "Filters"}
+          </Button>
+        </form>
+      </div>
+      
+      {/* Collapsible Filters */}
+      {showFilters && (
+        <Card className="mt-2">
+          <CardContent className="pt-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Set Filter */}
               <div className="space-y-2">
@@ -298,22 +327,18 @@ export default function CollectionPageClient() {
               </div>
             </div>
             
-            {hasFilters && (
-              <div className="flex justify-end">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={clearFilters}
-                  className="flex items-center"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Clear Filters
-                </Button>
-              </div>
-            )}
-          </form>
-        </CardContent>
-      </Card>
+            <div className="flex justify-end mt-4">
+              <Button 
+                type="button" 
+                onClick={handleSearch}
+                className="flex items-center"
+              >
+                Apply Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       {hasFilters ? (
         // Show search results
@@ -327,7 +352,7 @@ export default function CollectionPageClient() {
           <Separator />
           
           {filteredCards.length > 0 ? (
-            <CollectionCardGrid cards={filteredCards} className="grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" />
+            <CollectionCardGridWrapper cards={filteredCards} className="grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" />
           ) : (
             <div className="text-center py-12 border rounded-lg bg-card">
               <h3 className="text-xl font-medium mb-2">No Results Found</h3>
@@ -363,7 +388,7 @@ export default function CollectionPageClient() {
                 
                 <Separator />
                 
-                <CollectionCardGrid cards={cards} className="grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" />
+                <CollectionCardGridWrapper cards={cards} className="grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" />
               </div>
             ) : (
               <EmptyCollection />

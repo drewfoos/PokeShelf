@@ -17,9 +17,10 @@ import { GroupedCard, CardVariant } from '@/types';
 interface CollectionCardGridProps {
   cards: GroupedCard[];
   className?: string;
+  onCardDeleted?: () => void; // Add this prop
 }
 
-export default function CollectionCardGrid({ cards, className = '' }: CollectionCardGridProps) {
+export default function CollectionCardGrid({ cards, className = '', onCardDeleted }: CollectionCardGridProps) {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<GroupedCard | null>(null);
@@ -55,8 +56,13 @@ export default function CollectionCardGrid({ cards, className = '' }: Collection
       toast.success('Card removed from collection');
       setIsDialogOpen(false);
       
-      // Refresh the page to reflect changes
-      router.refresh();
+      // Call the onCardDeleted callback if provided
+      if (onCardDeleted) {
+        onCardDeleted();
+      } else {
+        // If no callback provided, refresh the page as fallback
+        router.refresh();
+      }
     } catch (error) {
       toast.error('Error removing card from collection');
       console.error('Error removing card:', error);
