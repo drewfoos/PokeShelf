@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Search, ArrowUpDown } from 'lucide-react';
-import { formatPrice } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
@@ -16,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// Modified Set stat interface to be more flexible with null values
+// Modified Set stat interface without estimated value
 interface SetStat {
   id: string;
   name: string;
@@ -25,7 +24,6 @@ interface SetStat {
   totalInSet: number;
   cardsInCollection: number;
   percentComplete: number;
-  estimatedValue: number;
   images: {
     symbol?: string;
     logo?: string;
@@ -38,7 +36,7 @@ interface CollectionSetViewProps {
 
 export default function CollectionSetView({ sets }: CollectionSetViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'completion' | 'releaseDate' | 'value' | 'name'>('completion');
+  const [sortBy, setSortBy] = useState<'completion' | 'releaseDate' | 'name'>('completion');
   
   // Sort and filter the sets
   const filteredSets = sets
@@ -52,8 +50,6 @@ export default function CollectionSetView({ sets }: CollectionSetViewProps) {
           return b.percentComplete - a.percentComplete;
         case 'releaseDate':
           return new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime();
-        case 'value':
-          return b.estimatedValue - a.estimatedValue;
         case 'name':
           return a.name.localeCompare(b.name);
         default:
@@ -89,9 +85,6 @@ export default function CollectionSetView({ sets }: CollectionSetViewProps) {
               <DropdownMenuItem onClick={() => setSortBy('releaseDate')}>
                 Release Date
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortBy('value')}>
-                Estimated Value
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSortBy('name')}>
                 Set Name
               </DropdownMenuItem>
@@ -108,19 +101,18 @@ export default function CollectionSetView({ sets }: CollectionSetViewProps) {
         </div>
       ) : (
         <div className="text-center py-12 bg-muted/30 rounded-lg">
-          <p className="text-muted-foreground">No sets found matching your search.</p>
+          <p className="text-muted-foreground">No sets found matching your search</p>
         </div>
       )}
     </div>
   );
 }
 
-// Helper to get the sort label
+// Helper function to get the sort label
 function getSortLabel(sortBy: string): string {
   switch (sortBy) {
     case 'completion': return 'Completion';
     case 'releaseDate': return 'Release Date';
-    case 'value': return 'Value';
     case 'name': return 'Name';
     default: return 'Completion';
   }
@@ -178,11 +170,6 @@ function SetCard({ set }: { set: SetStat }) {
           </div>
           
           <div className="flex justify-between mt-4 pt-3 border-t border-border/30">
-            <div className="text-xs">
-              <span className="text-muted-foreground">Estimated Value:</span>
-              <span className="ml-1 font-medium">{formatPrice(set.estimatedValue)}</span>
-            </div>
-            
             <Button size="sm" variant="secondary" asChild>
               <Link href={`/sets/${set.id}`}>
                 View Set
