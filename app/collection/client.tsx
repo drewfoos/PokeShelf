@@ -35,9 +35,9 @@ export default function CollectionPageClient() {
   
   // State for search form
   const [searchTerm, setSearchTerm] = useState(q);
-  const [selectedSet, setSelectedSet] = useState(set);
-  const [selectedType, setSelectedType] = useState(type);
-  const [selectedRarity, setSelectedRarity] = useState(rarity);
+  const [selectedSet, setSelectedSet] = useState(set || 'all');
+  const [selectedType, setSelectedType] = useState(type || 'all');
+  const [selectedRarity, setSelectedRarity] = useState(rarity || 'all');
   
   // State for collection data (will be loaded via useEffect)
   const [cards, setCards] = useState<GroupedCard[]>([]);
@@ -139,19 +139,19 @@ export default function CollectionPageClient() {
     }
     
     // Filter by set
-    if (set) {
+    if (set && set !== 'all') {
       filtered = filtered.filter(item => item.card.setId === set);
     }
     
     // Filter by type
-    if (type) {
+    if (type && type !== 'all') {
       filtered = filtered.filter(item => 
         item.card.types && item.card.types.includes(type)
       );
     }
     
     // Filter by rarity
-    if (rarity) {
+    if (rarity && rarity !== 'all') {
       filtered = filtered.filter(item => item.card.rarity === rarity);
     }
     
@@ -166,9 +166,9 @@ export default function CollectionPageClient() {
     const params = new URLSearchParams();
     
     if (searchTerm) params.set('q', searchTerm);
-    if (selectedSet) params.set('set', selectedSet);
-    if (selectedType) params.set('type', selectedType);
-    if (selectedRarity) params.set('rarity', selectedRarity);
+    if (selectedSet && selectedSet !== 'all') params.set('set', selectedSet);
+    if (selectedType && selectedType !== 'all') params.set('type', selectedType);
+    if (selectedRarity && selectedRarity !== 'all') params.set('rarity', selectedRarity);
     
     // Navigate to the same page with the updated search parameters
     router.push(`/collection?${params.toString()}`);
@@ -177,9 +177,9 @@ export default function CollectionPageClient() {
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedSet('');
-    setSelectedType('');
-    setSelectedRarity('');
+    setSelectedSet('all');
+    setSelectedType('all');
+    setSelectedRarity('all');
     router.push('/collection');
   };
   
@@ -251,7 +251,7 @@ export default function CollectionPageClient() {
                     <SelectValue placeholder="All Sets" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Sets</SelectItem>
+                    <SelectItem value="all">All Sets</SelectItem>
                     {filterOptions.sets.map((set) => (
                       <SelectItem key={set.id} value={set.id}>
                         {set.name}
@@ -269,7 +269,7 @@ export default function CollectionPageClient() {
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="all">All Types</SelectItem>
                     {filterOptions.types.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
@@ -287,7 +287,7 @@ export default function CollectionPageClient() {
                     <SelectValue placeholder="All Rarities" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Rarities</SelectItem>
+                    <SelectItem value="all">All Rarities</SelectItem>
                     {filterOptions.rarities.map((rarity) => (
                       <SelectItem key={rarity} value={rarity}>
                         {rarity}
