@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { pokemonTcgService } from '@/lib/services/pokemonTcgService';
 import { AdminSyncRequest, SyncResponse, SetSyncResult } from '@/types';
+import prisma from '@/lib/prisma';
 
 /**
  * Admin API for synchronizing data from the Pokemon TCG API.
@@ -46,136 +47,9 @@ export async function POST(request: NextRequest) {
         result = await pokemonTcgService.syncSetCards(setId);
         break;
 
-      case 'syncSpecificSets':
-        // Handle special set categories
-        if (type === 'mcdonalds') {
-          console.log("Syncing McDonald's promotional sets...");
-          // Complete array of McDonald's promo set IDs (updated for all years)
-          const mcdonaldsSets = ['mcd11', 'mcd12', 'mcd14', 'mcd15', 'mcd16', 'mcd17', 
-                               'mcd18', 'mcd19', 'mcd21', 'mcd22', 'mcd23'];
-          
-          // Create properly typed result object
-          const mcResult: { success: boolean; sets: SetSyncResult[] } = { 
-            success: true, 
-            sets: [] 
-          };
-          
-          // First ensure all sets exist in the database
-          await pokemonTcgService.syncSets();
-          
-          // Then sync each McDonald's set one by one
-          for (const mcSetId of mcdonaldsSets) {
-            console.log(`Syncing McDonald's set: ${mcSetId}`);
-            const setResult = await pokemonTcgService.syncSetCards(mcSetId);
-            if (setResult.success) {
-              mcResult.sets.push({
-                id: mcSetId,
-                count: setResult.count
-              });
-            } else {
-              mcResult.sets.push({
-                id: mcSetId,
-                error: setResult.error
-              });
-            }
-            
-            // Add a delay between set syncs to avoid API rate limits
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-          
-          result = mcResult;
-        } else if (type === 'recent') {
-          console.log("Syncing recent sets...");
-          // Updated to include the most recent sets from 2024-2025
-          const recentSets = ['pevo', 'ssp', 'scr', 'sfa', 'tmq', 'tfo', 'sv3pt5', 'sv4', 'sv4a', 'sv3'];
-          
-          // Create properly typed result object
-          const recentResult: { success: boolean; sets: SetSyncResult[] } = { 
-            success: true, 
-            sets: [] 
-          };
-          
-          // First ensure all sets exist in the database
-          await pokemonTcgService.syncSets();
-          
-          // Then sync each recent set one by one
-          for (const setId of recentSets) {
-            console.log(`Syncing recent set: ${setId}`);
-            try {
-              const setResult = await pokemonTcgService.syncSetCards(setId);
-              if (setResult.success) {
-                recentResult.sets.push({
-                  id: setId,
-                  count: setResult.count
-                });
-              } else {
-                recentResult.sets.push({
-                  id: setId,
-                  error: setResult.error
-                });
-              }
-            } catch (error) {
-              console.error(`Error syncing set ${setId}:`, error);
-              recentResult.sets.push({
-                id: setId,
-                error: error instanceof Error ? error.message : "Unknown error"
-              });
-            }
-            
-            // Add a delay between set syncs to avoid API rate limits
-            await new Promise(resolve => setTimeout(resolve, 3000));
-          }
-          
-          result = recentResult;
-        } else if (type === 'popular') {
-          console.log("Syncing popular vintage sets...");
-          // Popular vintage sets that collectors often want
-          const popularSets = ['base1', 'base2', 'basep', 'gym1', 'gym2', 'neo1', 'neo2', 'neo3', 'neo4'];
-          
-          // Create properly typed result object
-          const popularResult: { success: boolean; sets: SetSyncResult[] } = { 
-            success: true, 
-            sets: [] 
-          };
-          
-          // First ensure all sets exist in the database
-          await pokemonTcgService.syncSets();
-          
-          // Then sync each popular set one by one
-          for (const setId of popularSets) {
-            console.log(`Syncing popular set: ${setId}`);
-            try {
-              const setResult = await pokemonTcgService.syncSetCards(setId);
-              if (setResult.success) {
-                popularResult.sets.push({
-                  id: setId,
-                  count: setResult.count
-                });
-              } else {
-                popularResult.sets.push({
-                  id: setId,
-                  error: setResult.error
-                });
-              }
-            } catch (error) {
-              console.error(`Error syncing set ${setId}:`, error);
-              popularResult.sets.push({
-                id: setId,
-                error: error instanceof Error ? error.message : "Unknown error"
-              });
-            }
-            
-            // Add a delay between set syncs to avoid API rate limits
-            await new Promise(resolve => setTimeout(resolve, 3000));
-          }
-          
-          result = popularResult;
-        } else {
-          return NextResponse.json(
-            { error: `Unknown set type: ${type}` },
-            { status: 400 }
-          );
-        }
+      case 'syncSetsAndCards':
+        console.log('Starting comprehensive sync of all sets and their cards...');
+        result = await syncSetsAndCards();
         break;
 
       case 'updatePrices':
@@ -186,17 +60,6 @@ export async function POST(request: NextRequest) {
       case 'checkNewSets':
         console.log('Checking for new sets...');
         result = await pokemonTcgService.syncNewSets();
-        break;
-
-      case 'syncBatch':
-        if (!setIds || !Array.isArray(setIds) || setIds.length === 0) {
-          return NextResponse.json(
-            { error: 'setIds array is required for syncBatch action' },
-            { status: 400 }
-          );
-        }
-        console.log(`Syncing batch of ${setIds.length} sets...`);
-        result = await pokemonTcgService.syncBatchSets(setIds);
         break;
 
       default:
@@ -234,5 +97,100 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Implementation of comprehensive sync for all sets and their cards.
+ * This is a separate function to keep the main switch case clean.
+ */
+async function syncSetsAndCards() {
+  try {
+    // First sync all sets to get the latest list
+    console.log("Step 1: Syncing all sets metadata...");
+    const setsResult = await pokemonTcgService.syncSets();
+    
+    if (!setsResult.success) {
+      return {
+        success: false,
+        error: setsResult.error || "Failed to sync sets",
+        phase: "sets",
+        progress: 0
+      };
+    }
+    
+    // Get all sets from the database
+    const sets = await prisma.set.findMany({
+      select: { id: true, name: true },
+      orderBy: { releaseDate: 'desc' }
+    });
+    
+    console.log(`Step 2: Syncing cards for ${sets.length} sets...`);
+    
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+    let totalCards = 0;
+    
+    // Process each set (newest first)
+    for (let i = 0; i < sets.length; i++) {
+      const set = sets[i];
+      const progress = Math.round((i / sets.length) * 100);
+      
+      console.log(`[${progress}%] Syncing cards for set ${i+1}/${sets.length}: ${set.name} (${set.id})`);
+      
+      try {
+        const setResult = await pokemonTcgService.syncSetCards(set.id);
+        
+        if (setResult.success) {
+          successCount++;
+          totalCards += (setResult.count || 0);
+          results.push({
+            id: set.id,
+            name: set.name,
+            count: setResult.count,
+            success: true
+          });
+        } else {
+          failCount++;
+          results.push({
+            id: set.id,
+            name: set.name,
+            error: setResult.error,
+            success: false
+          });
+        }
+      } catch (error) {
+        failCount++;
+        results.push({
+          id: set.id,
+          name: set.name,
+          error: error instanceof Error ? error.message : "Unknown error",
+          success: false
+        });
+      }
+      
+      // Add delay between sets to respect API rate limits (longer for larger sets)
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+    
+    return {
+      success: true,
+      setCount: sets.length,
+      successfulSets: successCount,
+      failedSets: failCount,
+      totalCards,
+      phase: "complete",
+      progress: 100,
+      sets: results
+    };
+  } catch (error) {
+    console.error("Error in comprehensive sync:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      phase: "unknown",
+      progress: 0
+    };
   }
 }

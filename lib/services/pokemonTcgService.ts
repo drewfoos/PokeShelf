@@ -1,152 +1,18 @@
 // lib/services/pokemonTcgService.ts
 import prisma from '../prisma';
-import { Prisma } from '@prisma/client';
-
-interface PaginationOptions {
-  page?: number;
-  pageSize?: number;
-  orderBy?: string;
-}
-
-interface QueryOptions extends PaginationOptions {
-  q?: string;
-  select?: string;
-  [key: string]: unknown; // allow arbitrary string keys
-}
-
-// --- Define interfaces for API responses with Prisma-compatible JSON types ---
-
-// Define proper type for legalities with index signature
-interface Legalities {
-  standard?: string;
-  expanded?: string;
-  unlimited?: string;
-  [key: string]: string | undefined; // Makes it compatible with Prisma
-}
-
-// Define proper types for images with index signature
-interface SetImages {
-  symbol: string;
-  logo: string;
-  [key: string]: string; // Makes it compatible with Prisma
-}
-
-interface CardImages {
-  small: string;
-  large: string;
-  [key: string]: string; // Makes it compatible with Prisma
-}
-
-// Define proper types for TCGPlayer with nested index signatures
-interface TCGPlayerPriceDetails {
-  market: number;
-  [key: string]: number | undefined;
-}
-
-interface TCGPlayerPrices {
-  normal?: TCGPlayerPriceDetails;
-  holofoil?: TCGPlayerPriceDetails;
-  reverseHolofoil?: TCGPlayerPriceDetails;
-  '1stEditionHolofoil'?: TCGPlayerPriceDetails;
-  [key: string]: TCGPlayerPriceDetails | undefined;
-}
-
-interface TCGPlayerData {
-  prices?: TCGPlayerPrices;
-  url?: string;
-  updatedAt?: string;
-  [key: string]: unknown; // Makes it compatible with Prisma
-}
-
-export interface PokemonSet {
-  id: string;
-  name: string;
-  series: string;
-  printedTotal: number;
-  total: number;
-  legalities?: Legalities;
-  ptcgoCode?: string;
-  releaseDate: string;
-  updatedAt: string;
-  images: SetImages;
-}
-
-interface PokemonSetResponse {
-  data: PokemonSet[];
-}
-
-interface PokemonSetSingleResponse {
-  data: PokemonSet;
-}
-
-export interface PokemonCard {
-  id: string;
-  name: string;
-  supertype: string;
-  subtypes: string[];
-  hp?: string;
-  types: string[];
-  set: {
-    id: string;
-    name: string;
-  };
-  number: string;
-  artist?: string;
-  rarity: string;
-  nationalPokedexNumbers: number[];
-  images: CardImages;
-  tcgplayer?: TCGPlayerData;
-}
-
-interface PokemonCardResponse {
-  data: PokemonCard[];
-}
-
-// Fallback data for newer sets that might not yet be in the API
-// Only used when a set isn't found in the API
-const FALLBACK_SETS: Record<string, Partial<PokemonSet>> = {
-  'pevo': {
-    name: 'Prismatic Evolutions',
-    series: 'Scarlet & Violet',
-    releaseDate: '2025/01/17'
-  },
-  'ssp': {
-    name: 'Surging Sparks',
-    series: 'Scarlet & Violet',
-    releaseDate: '2024/11/08'
-  },
-  'scr': {
-    name: 'Stellar Crown',
-    series: 'Scarlet & Violet',
-    releaseDate: '2024/09/13'
-  },
-  'sfa': {
-    name: 'Shrouded Fable',
-    series: 'Scarlet & Violet',
-    releaseDate: '2024/08/02'
-  },
-  'tmq': {
-    name: 'Twilight Masquerade',
-    series: 'Scarlet & Violet',
-    releaseDate: '2024/05/24' 
-  },
-  'tfo': {
-    name: 'Temporal Forces',
-    series: 'Scarlet & Violet',
-    releaseDate: '2024/03/22'
-  }
-};
+import { 
+  Card, 
+  PriceHistoryRecord, 
+  TCGPlayerData,
+  SetSyncResult,
+  prepareJsonForPrisma
+} from '@/types';
+// Import Set as PokemonSet to avoid conflict with the global Set
+import type { Set as PokemonSet } from '@/types';
 
 /**
- * Helper function to ensure JSON compatibility with Prisma
- * This ensures that objects are properly serializable
- */
-function ensureJsonCompatible<T>(data: T): T {
-  return JSON.parse(JSON.stringify(data));
-}
-
-/**
- * Service for interacting with the Pokémon TCG API and managing card data
+ * Simplified service for interacting with the Pokémon TCG API
+ * Focused on admin functionality for syncing cards and prices
  */
 export class PokemonTcgService {
   private baseUrl: string;
@@ -157,19 +23,19 @@ export class PokemonTcgService {
   constructor(apiKey: string) {
     this.baseUrl = 'https://api.pokemontcg.io/v2';
     this.apiKey = apiKey;
-    this.maxRetries = 5; // Increase max retries for better reliability
-    this.retryDelay = 2500; // Slightly longer delay between retries
+    this.maxRetries = 3;
+    this.retryDelay = 2000;
   }
 
   /**
-   * Sleep utility function
+   * Sleep utility function for rate limit handling
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
-   * Make a request to the Pokémon TCG API with enhanced rate limit handling
+   * Make a request to the Pokémon TCG API with rate limit handling
    */
   private async makeRequest(
     endpoint: string,
@@ -177,13 +43,15 @@ export class PokemonTcgService {
     retries = this.maxRetries
   ): Promise<unknown> {
     const url = new URL(`${this.baseUrl}${endpoint}`);
-    Object.keys(params).forEach(key => {
-      const value = params[key];
+    
+    // Add parameters to URL
+    Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         url.searchParams.append(key, String(value));
       }
     });
 
+    // Add API key to headers
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
@@ -198,136 +66,62 @@ export class PokemonTcgService {
 
       // Handle rate limiting with exponential backoff
       if (response.status === 429) {
-        // Get retry-after header if available, otherwise use exponential backoff
         const retryAfter = response.headers.get('Retry-After');
         const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : this.retryDelay * (this.maxRetries - retries + 1);
         
-        console.log(`Rate limit reached. Waiting for ${waitTime/1000} seconds before retrying...`);
+        console.log(`Rate limit reached. Waiting ${waitTime/1000}s before retrying...`);
         await this.sleep(waitTime);
         return this.makeRequest(endpoint, params, retries - 1);
       }
 
       if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = `HTTP error ${response.status}: ${response.statusText}`;
-
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = `API Error: ${errorData.error?.message || response.statusText}`;
-        } catch {
-          errorMessage = `API Error: ${errorText || response.statusText}`;
-        }
-        throw new Error(errorMessage);
+        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
       }
 
-      const text = await response.text();
-      if (!text) {
-        throw new Error('Empty response received from server');
-      }
-
-      try {
-        return JSON.parse(text);
-      } catch {
-        console.error('Failed to parse response as JSON:', text);
-        throw new Error('Failed to parse API response');
-      }
-    } catch (error: unknown) {
+      const data = await response.json();
+      return data;
+    } catch (error) {
       if (retries > 0) {
-        // Implement exponential backoff
         const backoffTime = this.retryDelay * (this.maxRetries - retries + 1);
-        console.log(`Request failed. Retrying in ${backoffTime/1000}s... (${retries} attempts left)`);
+        console.log(`Request failed. Retrying in ${backoffTime/1000}s... (${retries} left)`);
         await this.sleep(backoffTime);
         return this.makeRequest(endpoint, params, retries - 1);
       }
-      console.error('API Request failed after all retries:', error);
       throw error;
     }
   }
 
   /**
-   * Get all card sets
+   * Get all sets from the API
    */
-  async getSets(options: QueryOptions = {}): Promise<PokemonSetResponse> {
+  async getSets(options: { pageSize?: number, orderBy?: string } = {}): Promise<{ data: PokemonSet[] }> {
     const response = await this.makeRequest('/sets', { 
       ...options,
-      orderBy: options.orderBy || '-releaseDate' // Default to sorting by newest first
+      orderBy: options.orderBy || '-releaseDate' // Newest first
     });
-    return response as PokemonSetResponse;
+    return response as { data: PokemonSet[] };
   }
 
   /**
-   * Get a single set by ID
+   * Get cards from a specific set
    */
-  async getSet(id: string): Promise<PokemonSetSingleResponse> {
-    const response = await this.makeRequest(`/sets/${id}`);
-    return response as PokemonSetSingleResponse;
-  }
-
-  /**
-   * Get cards with optional filtering
-   */
-  async getCards(options: QueryOptions = {}): Promise<PokemonCardResponse> {
+  async getCards(options: { q?: string, page?: number, pageSize?: number } = {}): Promise<{ data: Card[] }> {
     const response = await this.makeRequest('/cards', options);
-    return response as PokemonCardResponse;
-  }
-
-  /**
-   * Get a single card by ID
-   */
-  async getCard(id: string): Promise<PokemonCard> {
-    const response = await this.makeRequest(`/cards/${id}`);
-    return (response as { data: PokemonCard }).data;
-  }
-
-  /**
-   * Search for cards using the query syntax
-   */
-  async searchCards(query: string, options: PaginationOptions = {}): Promise<PokemonCardResponse> {
-    const response = await this.makeRequest('/cards', {
-      ...options,
-      q: query,
-    });
-    return response as PokemonCardResponse;
+    return response as { data: Card[] };
   }
 
   /**
    * Sync all sets to the database
    */
-  async syncSets() {
+  async syncSets(): Promise<{ success: boolean; count?: number; error?: unknown }> {
     try {
-      // Get all sets from the API with a larger page size to ensure we get everything
+      // Get all sets from the API
       const response = await this.getSets({ pageSize: 250 });
       const sets = response.data;
 
       console.log(`Syncing ${sets.length} sets to database...`);
-
-      // Add missing sets from our fallback data if they're not in the API response
-      const missingNewSets: PokemonSet[] = [];
-      Object.entries(FALLBACK_SETS).forEach(([id, fallbackSet]) => {
-        if (!sets.some(set => set.id === id)) {
-          // Only add if not already in API response
-          missingNewSets.push({
-            id,
-            name: fallbackSet.name || id,
-            series: fallbackSet.series || 'Scarlet & Violet',
-            printedTotal: 0, // Will be updated later when we sync cards
-            total: 0,
-            releaseDate: fallbackSet.releaseDate || '2025-01-01',
-            updatedAt: new Date().toISOString(),
-            images: {
-              symbol: '',
-              logo: '',
-            }
-          });
-        }
-      });
-
-      if (missingNewSets.length > 0) {
-        console.log(`Adding ${missingNewSets.length} new sets that aren't in the API yet...`);
-        sets.push(...missingNewSets);
-      }
-
-      // Process sets in batches to prevent overloading the database
+      
+      // Process sets in batches
       const batchSize = 50;
       for (let i = 0; i < sets.length; i += batchSize) {
         const batch = sets.slice(i, i + batchSize);
@@ -343,11 +137,11 @@ export class PokemonTcgService {
                 series: setData.series,
                 printedTotal: setData.printedTotal,
                 total: setData.total,
-                legalities: ensureJsonCompatible(setData.legalities),
+                legalities: prepareJsonForPrisma(setData.legalities || {}),
                 ptcgoCode: setData.ptcgoCode,
                 releaseDate: setData.releaseDate,
                 updatedAt: setData.updatedAt,
-                images: ensureJsonCompatible(setData.images),
+                images: prepareJsonForPrisma(setData.images || { symbol: "", logo: "" }),
                 lastUpdated: new Date(),
               },
               create: {
@@ -356,201 +150,89 @@ export class PokemonTcgService {
                 series: setData.series,
                 printedTotal: setData.printedTotal,
                 total: setData.total,
-                legalities: ensureJsonCompatible(setData.legalities),
+                legalities: prepareJsonForPrisma(setData.legalities || {}),
                 ptcgoCode: setData.ptcgoCode,
                 releaseDate: setData.releaseDate,
                 updatedAt: setData.updatedAt,
-                images: ensureJsonCompatible(setData.images),
+                images: prepareJsonForPrisma(setData.images || { symbol: "", logo: "" }),
                 lastUpdated: new Date(),
               },
             });
           } catch (error) {
             console.error(`Error upserting set ${setData.id}:`, error);
-            // Continue with next set despite error
           }
         }
         
-        // Brief delay between batches
+        // Add delay between batches
         if (i + batchSize < sets.length) {
           await this.sleep(500);
         }
       }
 
-      console.log('Sets sync completed successfully');
       return { success: true, count: sets.length };
-    } catch (error: unknown) {
+    } catch (error) {
       console.error('Failed to sync sets:', error);
       return { success: false, error };
     }
   }
 
   /**
-   * Check for and import any new sets
+   * Sync cards from a specific set
    */
-  async syncNewSets() {
+  async syncSetCards(setId: string): Promise<{ 
+    success: boolean; 
+    count?: number; 
+    failed?: number;
+    failedCardIds?: string[];
+    error?: unknown 
+  }> {
     try {
-      const response = await this.getSets({ pageSize: 250 });
-      const apiSets = response.data;
-
-      // Add any recent sets from our fallback data if they're not in the API response
-      Object.entries(FALLBACK_SETS).forEach(([id, fallbackSet]) => {
-        if (!apiSets.some(set => set.id === id)) {
-          apiSets.push({
-            id,
-            name: fallbackSet.name || id,
-            series: fallbackSet.series || 'Scarlet & Violet',
-            printedTotal: 0,
-            total: 0,
-            releaseDate: fallbackSet.releaseDate || '2025-01-01',
-            updatedAt: new Date().toISOString(),
-            images: {
-              symbol: '',
-              logo: ''
-            }
-          });
-        }
-      });
-
-      const dbSets = await prisma.set.findMany({ select: { id: true } });
-      const existingSetIds = new Set(dbSets.map(set => set.id));
-      const newSets = apiSets.filter(set => !existingSetIds.has(set.id));
-
-      if (newSets.length === 0) {
-        console.log('No new sets to import');
-        return { success: true, count: 0, newSets: [] };
-      }
-
-      console.log(`Found ${newSets.length} new sets to import`);
-      const importedSets = [];
-
-      for (const setData of newSets) {
-        try {
-          await prisma.set.create({
-            data: {
-              id: setData.id,
-              name: setData.name,
-              series: setData.series,
-              printedTotal: setData.printedTotal,
-              total: setData.total,
-              legalities: ensureJsonCompatible(setData.legalities),
-              ptcgoCode: setData.ptcgoCode,
-              releaseDate: setData.releaseDate,
-              updatedAt: setData.updatedAt,
-              images: ensureJsonCompatible(setData.images),
-              lastUpdated: new Date(),
-            }
-          });
-
-          console.log(`Importing cards for new set: ${setData.name} (${setData.id})`);
-          const result = await this.syncSetCards(setData.id);
-
-          if (result.success) {
-            importedSets.push({
-              id: setData.id,
-              name: setData.name,
-              cardCount: result.count,
-            });
-          }
-        } catch (error) {
-          console.error(`Error creating set ${setData.id}:`, error);
-          // Continue with next set despite error
-        }
-
-        // Add a delay between importing sets to avoid rate limits
-        if (newSets.indexOf(setData) < newSets.length - 1) {
-          console.log('Waiting before importing next set...');
-          await this.sleep(10000);
-        }
-      }
-
-      return {
-        success: true,
-        count: newSets.length,
-        importedSets,
-      };
-    } catch (error: unknown) {
-      console.error('Failed to sync new sets:', error);
-      return { success: false, error };
-    }
-  }
-
-  /**
-   * Sync cards from a specific set to the database with improved reliability
-   */
-  async syncSetCards(setId: string) {
-    try {
-      let setData: PokemonSet;
-      
-      try {
-        // Try to get set data from the API
-        const setResponse = await this.getSet(setId);
-        setData = setResponse.data;
-      } catch {
-        // If the set isn't in the API (like a new set), create a fallback
-        if (FALLBACK_SETS[setId]) {
-          console.log(`Set ${setId} not found in API, using fallback data`);
-          const fallback = FALLBACK_SETS[setId];
-          setData = {
-            id: setId,
-            name: fallback.name || setId,
-            series: fallback.series || 'Scarlet & Violet',
-            printedTotal: 0,
-            total: 0,
-            releaseDate: fallback.releaseDate || '2025-01-01',
-            updatedAt: new Date().toISOString(),
-            images: {
-              symbol: '',
-              logo: ''
-            }
-          };
-        } else {
-          throw new Error(`Set with ID ${setId} not found and no fallback available`);
-        }
-      }
-
-      const query = `set.id:${setId}`;
+      // Set up tracking variables
       let page = 1;
-      const pageSize = 50; // Smaller page size for better reliability
+      const pageSize = 50;
       let hasMoreCards = true;
       let totalCards = 0;
-      let successfullyProcessedCards = 0;
+      let successCount = 0;
       const failedCards: string[] = [];
 
-      console.log(`Starting sync for set: ${setData.name} (${setId})`);
+      console.log(`Starting sync for set: ${setId}`);
 
-      // Sync cards in pages with improved error handling
+      // Paginate through all cards in the set
       while (hasMoreCards) {
-        // Add delay between pages to avoid rate limits
+        // Delay between pages for rate limiting
         if (page > 1) {
-          await this.sleep(2500);
+          await this.sleep(2000);
         }
         
         try {
-          console.log(`Fetching page ${page} for set ${setData.name}...`);
-          const cardsResponse = await this.searchCards(query, { page, pageSize });
+          console.log(`Fetching page ${page} for set ${setId}...`);
+          const query = `set.id:${setId}`;
+          const cardsResponse = await this.getCards({ q: query, page, pageSize });
           const cards = cardsResponse.data;
           
           if (cards.length === 0) {
-            console.log(`No cards found for set ${setData.name} on page ${page}`);
             hasMoreCards = false;
             continue;
           }
           
-          console.log(`Processing ${cards.length} cards from set ${setData.name} (page ${page})...`);
-
-          // Process cards in smaller batches for better reliability
+          // Process cards in smaller batches
           const cardBatchSize = 10;
           for (let i = 0; i < cards.length; i += cardBatchSize) {
             const cardBatch = cards.slice(i, i + cardBatchSize);
             
-            // Process each card in the batch
             for (const cardData of cardBatch) {
               try {
-                // Add micro-delay every few cards
+                // Add micro-delay to prevent database overload
                 if (i > 0 && i % 5 === 0) {
                   await this.sleep(200);
                 }
 
+                const tcgPlayerData = cardData.tcgplayer as TCGPlayerData;
+
+                // Cast to any to handle the set property which might not be in our Card type
+                const cardWithSet = cardData as any;
+                
+                // Upsert the card
                 await prisma.card.upsert({
                   where: { id: cardData.id },
                   update: {
@@ -559,14 +241,14 @@ export class PokemonTcgService {
                     subtypes: cardData.subtypes || [],
                     hp: cardData.hp,
                     types: cardData.types || [],
-                    setId: cardData.set.id,
-                    setName: cardData.set.name,
+                    setId: cardWithSet.set.id,
+                    setName: cardWithSet.set.name,
                     number: cardData.number,
                     artist: cardData.artist,
                     rarity: cardData.rarity || 'Unknown',
                     nationalPokedexNumbers: cardData.nationalPokedexNumbers || [],
-                    images: ensureJsonCompatible(cardData.images),
-                    tcgplayer: ensureJsonCompatible(cardData.tcgplayer) as Prisma.InputJsonValue,
+                    images: prepareJsonForPrisma(cardData.images),
+                    tcgplayer: prepareJsonForPrisma(tcgPlayerData),
                     lastUpdated: new Date(),
                   },
                   create: {
@@ -576,50 +258,44 @@ export class PokemonTcgService {
                     subtypes: cardData.subtypes || [],
                     hp: cardData.hp,
                     types: cardData.types || [],
-                    setId: cardData.set.id,
-                    setName: cardData.set.name,
+                    setId: cardWithSet.set.id,
+                    setName: cardWithSet.set.name,
                     number: cardData.number,
                     artist: cardData.artist,
                     rarity: cardData.rarity || 'Unknown',
                     nationalPokedexNumbers: cardData.nationalPokedexNumbers || [],
-                    images: ensureJsonCompatible(cardData.images),
-                    tcgplayer: ensureJsonCompatible(cardData.tcgplayer) as Prisma.InputJsonValue,
+                    images: prepareJsonForPrisma(cardData.images),
+                    tcgplayer: prepareJsonForPrisma(tcgPlayerData),
                     lastUpdated: new Date(),
                   },
                 });
 
-                // Update price history if available
-                if (cardData.tcgplayer?.prices) {
+                // Add price history if available
+                if (tcgPlayerData?.prices) {
                   try {
-                    await prisma.priceHistory.create({
-                      data: {
-                        cardId: cardData.id,
-                        date: new Date(),
-                        normal: cardData.tcgplayer.prices.normal?.market || null,
-                        holofoil: cardData.tcgplayer.prices.holofoil?.market || null,
-                        reverseHolofoil: cardData.tcgplayer.prices.reverseHolofoil?.market || null,
-                        firstEdition: cardData.tcgplayer.prices['1stEditionHolofoil']?.market || null,
-                      },
-                    });
+                    const priceData: PriceHistoryRecord = {
+                      cardId: cardData.id,
+                      date: new Date(),
+                      normal: tcgPlayerData.prices.normal?.market || null,
+                      holofoil: tcgPlayerData.prices.holofoil?.market || null,
+                      reverseHolofoil: tcgPlayerData.prices.reverseHolofoil?.market || null,
+                      firstEdition: tcgPlayerData.prices['1stEditionHolofoil']?.market || null,
+                    };
+                    
+                    await prisma.priceHistory.create({ data: priceData });
                   } catch (priceError) {
-                    // Only log price history errors but continue processing
-                    if (priceError instanceof Error && !priceError.message.includes('Unique constraint failed')) {
-                      console.warn(`Warning: Error creating price history for card ${cardData.id}:`, priceError);
+                    const errorMsg = priceError instanceof Error ? priceError.message : String(priceError);
+                    if (!errorMsg.includes('Unique constraint failed')) {
+                      console.warn(`Warning: Error creating price history for card ${cardData.id}`);
                     }
                   }
                 }
                 
-                successfullyProcessedCards++;
+                successCount++;
               } catch (cardError) {
                 console.error(`Error processing card ${cardData.id}:`, cardError);
                 failedCards.push(cardData.id);
-                // Continue with next card despite error
               }
-            }
-            
-            // Add delay between card batches
-            if (i + cardBatchSize < cards.length) {
-              await this.sleep(500);
             }
           }
 
@@ -631,21 +307,17 @@ export class PokemonTcgService {
           } else {
             page++;
           }
-          
-          console.log(`Processed ${totalCards} cards so far from set ${setData.name}`);
         } catch (pageError) {
           console.error(`Error processing page ${page} for set ${setId}:`, pageError);
           
-          // Retry this page after a longer delay
-          await this.sleep(5000);
-          
-          // Maximum 3 retries per page
-          if (pageError instanceof Error && pageError.message.includes('rate limit') && page > 3) {
-            console.log(`Too many retries for page ${page}, skipping to next page`);
-            page++;
+          // If rate limit error, retry after longer delay
+          if (pageError instanceof Error && pageError.message.includes('429')) {
+            await this.sleep(5000);
+          } else {
+            page++; // Skip problematic page after a few retries
           }
           
-          // If we hit too many errors, exit the loop
+          // Limit total retries
           if (page > 10) {
             console.error(`Too many errors, stopping sync for set ${setId}`);
             hasMoreCards = false;
@@ -653,153 +325,120 @@ export class PokemonTcgService {
         }
       }
 
-      // Update the set's total card count in our database if needed
-      if (successfullyProcessedCards > 0 && (!setData.printedTotal || setData.printedTotal === 0)) {
-        await prisma.set.update({
-          where: { id: setId },
-          data: {
-            printedTotal: successfullyProcessedCards,
-            total: successfullyProcessedCards
-          }
-        });
-      }
-
-      console.log(`Completed sync of ${totalCards} cards from set ${setData.name}`);
-      console.log(`Successfully processed: ${successfullyProcessedCards}, Failed: ${failedCards.length}`);
-      
       return { 
         success: true, 
-        count: successfullyProcessedCards,
-        total: totalCards,
+        count: successCount,
         failed: failedCards.length,
         failedCardIds: failedCards
       };
-    } catch (error: unknown) {
+    } catch (error) {
       console.error(`Failed to sync cards from set ${setId}:`, error);
       return { success: false, error };
     }
   }
 
   /**
-   * Update prices for specified cards (or all cards if no IDs provided)
+   * Update prices for cards in user collections
    */
-  async updateCardPrices(cardIds: string[] = []): Promise<{ success: boolean; count?: number; error?: unknown }> {
+  async updateCardPrices(): Promise<{ success: boolean; count?: number; error?: unknown }> {
     try {
-      if (cardIds.length > 0) {
-        const batchSize = 25; // Smaller batch size for better reliability
-        const batches: string[][] = [];
-        
-        for (let i = 0; i < cardIds.length; i += batchSize) {
-          batches.push(cardIds.slice(i, i + batchSize));
+      // Get cards in user collections
+      const userCards = await prisma.userCard.findMany({
+        select: { cardId: true },
+        distinct: ['cardId'],
+      });
+      
+      const uniqueCardIds = userCards.map(uc => uc.cardId);
+      console.log(`Found ${uniqueCardIds.length} unique cards in user collections`);
+
+      // Group cards by set for efficient API usage
+      const cardsBySet: Record<string, string[]> = {};
+      for (const cardId of uniqueCardIds) {
+        const setId = cardId.split('-')[0]; // Extract set ID from card ID
+        if (!cardsBySet[setId]) {
+          cardsBySet[setId] = [];
         }
+        cardsBySet[setId].push(cardId);
+      }
+
+      console.log(`Grouped into ${Object.keys(cardsBySet).length} sets for efficient updates`);
+      
+      let updatedCount = 0;
+      let processedSets = 0;
+      
+      // Process each set with appropriate delays
+      for (const [setId, setCardIds] of Object.entries(cardsBySet)) {
+        processedSets++;
+        console.log(`Processing set ${processedSets}/${Object.keys(cardsBySet).length}: ${setId} (${setCardIds.length} cards)`);
         
-        console.log(`Updating prices for ${cardIds.length} specific cards in ${batches.length} batches`);
-        let updatedCount = 0;
-
-        for (let i = 0; i < batches.length; i++) {
-          const batch = batches[i];
-          const query = batch.map(id => `id:${id}`).join(' OR ');
+        try {
+          // Fetch all cards for this set at once
+          const query = `set.id:${setId}`;
+          const cardsResponse = await this.getCards({ q: query, pageSize: 250 });
+          const cards = cardsResponse.data;
           
-          // Add longer delay between batches for better reliability
-          if (i > 0) {
-            await this.sleep(3000);
-          }
-          
-          console.log(`Processing batch ${i + 1}/${batches.length} (${batch.length} cards)...`);
-          
-          try {
-            const cardsResponse = await this.getCards({ q: query, pageSize: batchSize });
-            const cards = cardsResponse.data;
-
-            // Process each card in the batch
-            for (const card of cards) {
+          // Match with cards in collection and update prices
+          for (const card of cards) {
+            if (setCardIds.includes(card.id) && card.tcgplayer?.prices) {
               try {
-                if (card.tcgplayer?.prices) {
-                  // Create price history record
-                  await prisma.priceHistory.create({
-                    data: {
-                      cardId: card.id,
-                      date: new Date(),
-                      normal: card.tcgplayer.prices.normal?.market || null,
-                      holofoil: card.tcgplayer.prices.holofoil?.market || null,
-                      reverseHolofoil: card.tcgplayer.prices.reverseHolofoil?.market || null,
-                      firstEdition: card.tcgplayer.prices['1stEditionHolofoil']?.market || null,
-                    },
-                  });
-                  
-                  // Update the card with the latest price data
-                  await prisma.card.update({
-                    where: { id: card.id },
-                    data: {
-                      tcgplayer: ensureJsonCompatible(card.tcgplayer) as Prisma.JsonValue,
-                      lastUpdated: new Date(),
-                    },
-                  });
-                  
-                  updatedCount++;
-                } else {
-                  console.log(`No price data available for card ${card.id}`);
-                }
+                // Create price history record
+                const priceData: PriceHistoryRecord = {
+                  cardId: card.id,
+                  date: new Date(),
+                  normal: card.tcgplayer.prices.normal?.market || null,
+                  holofoil: card.tcgplayer.prices.holofoil?.market || null,
+                  reverseHolofoil: card.tcgplayer.prices.reverseHolofoil?.market || null,
+                  firstEdition: card.tcgplayer.prices['1stEditionHolofoil']?.market || null,
+                };
+                
+                await prisma.priceHistory.create({ data: priceData });
+                
+                // Update card with latest price data
+                await prisma.card.update({
+                  where: { id: card.id },
+                  data: {
+                    tcgplayer: prepareJsonForPrisma(card.tcgplayer),
+                    lastUpdated: new Date(),
+                  },
+                });
+                
+                updatedCount++;
               } catch (cardError) {
-                if (cardError instanceof Error && !cardError.message.includes('Unique constraint failed')) {
+                const errorMsg = cardError instanceof Error ? cardError.message : String(cardError);
+                if (!errorMsg.includes('Unique constraint failed')) {
                   console.error(`Error updating price for card ${card.id}:`, cardError);
                 }
-                // Continue with next card despite error
               }
             }
-          } catch (batchError) {
-            console.error(`Error processing batch ${i + 1}:`, batchError);
-            // Continue with next batch despite error
           }
+          
+          // Add delay between sets to respect rate limits
+          if (processedSets < Object.keys(cardsBySet).length) {
+            const delayTime = 3000; // 3 seconds between sets
+            console.log(`Waiting ${delayTime/1000}s before next set...`);
+            await this.sleep(delayTime);
+          }
+        } catch (setError) {
+          console.error(`Error processing set ${setId}:`, setError);
+          await this.sleep(5000); // Longer delay after error
         }
-
-        return { success: true, count: updatedCount };
-      } else {
-        // If no card IDs provided, update prices for all cards in user collections
-        const userCards = await prisma.userCard.findMany({
-          select: { cardId: true },
-          distinct: ['cardId'],
-        });
-        
-        const uniqueCardIds = userCards.map(uc => uc.cardId);
-        console.log(`Found ${uniqueCardIds.length} unique cards in user collections`);
-
-        if (uniqueCardIds.length === 0) {
-          return { success: true, count: 0 };
-        }
-        
-        return this.updateCardPrices(uniqueCardIds);
       }
-    } catch (error: unknown) {
+
+      return { success: true, count: updatedCount };
+    } catch (error) {
       console.error('Failed to update card prices:', error);
       return { success: false, error };
     }
   }
-  
+
   /**
-   * Get types, subtypes, supertypes, and rarities
+   * Sync multiple sets in a batch operation
    */
-  async getTypes() {
-    return this.makeRequest('/types');
-  }
-
-  async getSubtypes() {
-    return this.makeRequest('/subtypes');
-  }
-
-  async getSupertypes() {
-    return this.makeRequest('/supertypes');
-  }
-
-  async getRarities() {
-    return this.makeRequest('/rarities');
-  }
-  
-  /**
-   * Sync specific recent/popular sets in optimized batches
-   */
-  async syncBatchSets(setIds: string[]) {
-    const results = [];
+  async syncBatchSets(setIds: string[]): Promise<{
+    success: boolean;
+    results: SetSyncResult[];
+  }> {
+    const results: SetSyncResult[] = [];
     let successCount = 0;
     let failCount = 0;
     
@@ -818,44 +457,227 @@ export class PokemonTcgService {
           successCount++;
           results.push({
             id: setId,
-            name: FALLBACK_SETS[setId]?.name || setId,
-            success: true,
-            count: result.count
+            count: result.count,
+            success: true
           });
         } else {
           failCount++;
           results.push({
             id: setId,
-            name: FALLBACK_SETS[setId]?.name || setId,
-            success: false,
-            error: result.error
+            error: result.error,
+            success: false
           });
         }
       } catch (error) {
         failCount++;
         results.push({
           id: setId,
-          name: FALLBACK_SETS[setId]?.name || setId,
-          success: false,
-          error
+          error,
+          success: false
         });
       }
       
       // Add delay between sets
       if (i < setIds.length - 1) {
         const delayTime = 5000;
-        console.log(`Waiting ${delayTime/1000} seconds before syncing next set...`);
+        console.log(`Waiting ${delayTime/1000}s before syncing next set...`);
         await this.sleep(delayTime);
       }
     }
     
     return {
       success: failCount === 0,
-      total: setIds.length,
-      succeeded: successCount,
-      failed: failCount,
       results
     };
+  }
+
+  /**
+   * Check for and sync new sets that were added to the API
+   */
+  async syncNewSets(): Promise<{ 
+    success: boolean; 
+    count?: number; 
+    importedSets?: Array<{ id: string; name: string; cardCount: number }>;
+    error?: unknown;
+  }> {
+    try {
+      // Get all sets from the API
+      const response = await this.getSets({ pageSize: 250 });
+      const apiSets = response.data as PokemonSet[];
+
+      // Get sets we already have
+      const dbSets = await prisma.set.findMany({ select: { id: true } });
+      const existingSetIds = new Set(dbSets.map(set => set.id));
+      
+      // Find sets in API that aren't in our database
+      const newSets = apiSets.filter(set => !existingSetIds.has(set.id));
+
+      if (newSets.length === 0) {
+        console.log('No new sets to import');
+        return { success: true, count: 0, importedSets: [] };
+      }
+
+      console.log(`Found ${newSets.length} new sets to import`);
+      const importedSets = [];
+
+      // Import each new set
+      for (const setData of newSets) {
+        try {
+          // Add the set
+          await prisma.set.create({
+            data: {
+              id: setData.id,
+              name: setData.name,
+              series: setData.series,
+              printedTotal: setData.printedTotal,
+              total: setData.total,
+              legalities: prepareJsonForPrisma(setData.legalities || {}),
+              ptcgoCode: setData.ptcgoCode,
+              releaseDate: setData.releaseDate,
+              updatedAt: setData.updatedAt,
+              images: prepareJsonForPrisma(setData.images || { symbol: "", logo: "" }),
+              lastUpdated: new Date(),
+            }
+          });
+
+          // Then sync its cards
+          console.log(`Importing cards for new set: ${setData.name} (${setData.id})`);
+          const result = await this.syncSetCards(setData.id);
+
+          if (result.success) {
+            importedSets.push({
+              id: setData.id,
+              name: setData.name,
+              cardCount: result.count || 0,
+            });
+          }
+          
+          // Wait between sets to avoid rate limits
+          await this.sleep(10000);
+        } catch (error) {
+          console.error(`Error creating set ${setData.id}:`, error);
+        }
+      }
+
+      return {
+        success: true,
+        count: newSets.length,
+        importedSets,
+      };
+    } catch (error) {
+      console.error('Failed to sync new sets:', error);
+      return { success: false, error };
+    }
+  }
+
+  /**
+   * Comprehensive sync method that syncs all sets and their cards
+   */
+  async syncSetsAndCards(): Promise<{
+    success: boolean;
+    setCount?: number;
+    successfulSets?: number;
+    failedSets?: number;
+    totalCards?: number;
+    phase?: string;
+    progress?: number;
+    sets?: Array<{
+      id: string;
+      name?: string;
+      count?: number;
+      error?: unknown;
+      success?: boolean;
+    }>;
+    error?: unknown;
+  }> {
+    try {
+      // First sync all sets to get the latest list
+      console.log("Step 1: Syncing all sets metadata...");
+      const setsResult = await this.syncSets();
+      
+      if (!setsResult.success) {
+        return {
+          success: false,
+          error: setsResult.error || "Failed to sync sets",
+          phase: "sets",
+          progress: 0
+        };
+      }
+      
+      // Get all sets from the database
+      const sets = await prisma.set.findMany({
+        select: { id: true, name: true },
+        orderBy: { releaseDate: 'desc' }
+      });
+      
+      console.log(`Step 2: Syncing cards for ${sets.length} sets...`);
+      
+      const results = [];
+      let successCount = 0;
+      let failCount = 0;
+      let totalCards = 0;
+      
+      // Process each set (newest first)
+      for (let i = 0; i < sets.length; i++) {
+        const set = sets[i];
+        const progress = Math.round((i / sets.length) * 100);
+        
+        console.log(`[${progress}%] Syncing cards for set ${i+1}/${sets.length}: ${set.name} (${set.id})`);
+        
+        try {
+          const setResult = await this.syncSetCards(set.id);
+          
+          if (setResult.success) {
+            successCount++;
+            totalCards += (setResult.count || 0);
+            results.push({
+              id: set.id,
+              name: set.name,
+              count: setResult.count,
+              success: true
+            });
+          } else {
+            failCount++;
+            results.push({
+              id: set.id,
+              name: set.name,
+              error: setResult.error,
+              success: false
+            });
+          }
+        } catch (error) {
+          failCount++;
+          results.push({
+            id: set.id,
+            name: set.name,
+            error: error instanceof Error ? error.message : "Unknown error",
+            success: false
+          });
+        }
+        
+        // Add delay between sets to respect API rate limits (longer for larger sets)
+        await this.sleep(3000);
+      }
+      
+      return {
+        success: true,
+        setCount: sets.length,
+        successfulSets: successCount,
+        failedSets: failCount,
+        totalCards,
+        phase: "complete",
+        progress: 100,
+        sets: results
+      };
+    } catch (error) {
+      console.error("Error in comprehensive sync:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        phase: "unknown",
+        progress: 0
+      };
+    }
   }
 }
 

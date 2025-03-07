@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,37 +23,29 @@ import {
   Clock,
   AlertTriangle
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-// Define comprehensive interfaces for the expected data types
-interface SetSyncResult {
+
+interface SyncResult {
+  success: boolean;
+  count?: number;
+  total?: number;
+  failed?: number;
+  failedCardIds?: string[];
+  setCount?: number;
+  successfulSets?: number;
+  failedSets?: number;
+  totalCards?: number;
+  phase?: string;
+  progress?: number;
+  sets?: Array<{
     id: string;
     name?: string;
     count?: number;
+    error?: unknown;
     success?: boolean;
-    error?: unknown;
-  }
-
-interface SyncResult {
-    success: boolean;
-    count?: number;
-    total?: number;
-    failed?: number;
-    failedCardIds?: string[];
-    sets?: Array<{
-      id: string;
-      name?: string;
-      count?: number;
-      error?: unknown;
-    }>;
-    error?: unknown;
-  }
+  }>;
+  error?: unknown;
+}
 
 interface User {
   id: string;
@@ -61,13 +53,6 @@ interface User {
   email: string;
   isAdmin: boolean;
   createdAt: string;
-}
-
-// Updated set definitions
-interface SetOption {
-  id: string;
-  name: string;
-  series?: string;
 }
 
 export default function AdminDashboard() {
@@ -78,30 +63,9 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
-  const [selectedSet, setSelectedSet] = useState<string>('');
   const [operationStartTime, setOperationStartTime] = useState<number | null>(null);
-  const [selectedSets, setSelectedSets] = useState<string[]>([]);
   const [progressValue, setProgressValue] = useState<number>(0);
   const [progressInterval, setProgressInterval] = useState<NodeJS.Timeout | null>(null);
-
-  // Popular sets for easy selection
-  const popularSets: SetOption[] = [
-    { id: 'pevo', name: 'Prismatic Evolutions', series: 'Scarlet & Violet' },
-    { id: 'ssp', name: 'Surging Sparks', series: 'Scarlet & Violet' },
-    { id: 'scr', name: 'Stellar Crown', series: 'Scarlet & Violet' },
-    { id: 'sfa', name: 'Shrouded Fable', series: 'Scarlet & Violet' },
-    { id: 'tmq', name: 'Twilight Masquerade', series: 'Scarlet & Violet' },
-    { id: 'tfo', name: 'Temporal Forces', series: 'Scarlet & Violet' },
-    { id: 'sv3pt5', name: 'Paldean Fates', series: 'Scarlet & Violet' },
-    { id: 'sv4', name: 'Paradox Rift', series: 'Scarlet & Violet' },
-    { id: 'sv3', name: 'Obsidian Flames', series: 'Scarlet & Violet' },
-    { id: 'mcd21', name: "McDonald's Collection 2021" },
-    { id: 'mcd22', name: "McDonald's Collection 2022" },
-    { id: 'mcd23', name: "McDonald's Collection 2023" },
-    { id: 'base1', name: 'Base Set', series: 'Base' },
-    { id: 'gym1', name: 'Gym Heroes', series: 'Gym' },
-    { id: 'neo1', name: 'Neo Genesis', series: 'Neo' },
-  ];
 
   // Function to start the progress animation
   const startProgressAnimation = () => {
@@ -160,7 +124,7 @@ export default function AdminDashboard() {
   const handleSyncSets = async () => {
     setLoading('syncSets');
     setOperationStartTime(Date.now());
-    startProgressAnimation(); // Remove the assignment to progressInterval
+    startProgressAnimation();
     
     try {
       toast.info('Starting synchronization of all sets...');
@@ -193,8 +157,8 @@ export default function AdminDashboard() {
   };
 
   const handleSyncSetCards = async () => {
-    // Use either the input field or dropdown selection
-    const finalSetId = setId.trim() || selectedSet;
+    // Use the input field
+    const finalSetId = setId.trim();
     
     if (!finalSetId) {
       toast.error('Set ID is required');
@@ -203,11 +167,10 @@ export default function AdminDashboard() {
     
     setLoading('syncSetCards');
     setOperationStartTime(Date.now());
-    startProgressAnimation(); // Remove the assignment to progressInterval
+    startProgressAnimation();
     
     try {
-      const selectedSetName = popularSets.find(s => s.id === finalSetId)?.name || finalSetId;
-      toast.info(`Starting sync for set: ${selectedSetName}. This may take a few minutes...`);
+      toast.info(`Starting sync for set: ${finalSetId}. This may take a few minutes...`);
       
       const response = await fetch('/api/admin/sync', {
         method: 'POST',
@@ -228,14 +191,14 @@ export default function AdminDashboard() {
       
       if (data.result.success) {
         toast.success(
-          `Synced ${data.result.count} cards from set ${selectedSetName} in ${formatDuration(duration)}`
+          `Synced ${data.result.count} cards from set ${finalSetId} in ${formatDuration(duration)}`
         );
         
         if (data.result.failed && data.result.failed > 0) {
           toast.warning(`${data.result.failed} cards failed to sync. See results for details.`);
         }
       } else {
-        toast.error(`Failed to sync cards from set ${selectedSetName}`);
+        toast.error(`Failed to sync cards from set ${finalSetId}`);
       }
     } catch (error) {
       console.error('Error syncing set cards:', error);
@@ -246,24 +209,24 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSyncMcDonalds = async () => {
-    setLoading('syncMcDonalds');
+  const handleSyncSetsAndCards = async () => {
+    setLoading('syncSetsAndCards');
     setOperationStartTime(Date.now());
-    startProgressAnimation(); // Remove the assignment to progressInterval
+    startProgressAnimation();
     
     try {
-      toast.info("Starting sync for McDonald's promotional sets. This may take several minutes...");
+      toast.info("Starting comprehensive sync of all sets and their cards. This will take a long time...");
       
       const response = await fetch('/api/admin/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'syncSpecificSets', type: 'mcdonalds' })
+        body: JSON.stringify({ action: 'syncSetsAndCards' })
       });
       
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || "Failed to sync McDonald's sets");
+        throw new Error(data.error || "Failed to sync sets and cards");
       }
       
       setResults(data.result);
@@ -271,63 +234,20 @@ export default function AdminDashboard() {
       // Calculate the duration
       const duration = data.executionTimeMs || (Date.now() - (operationStartTime || Date.now()));
       
-      if (data.result.sets && data.result.sets.length > 0) {
-        const totalCards = data.result.sets.reduce((total: number, set: SetSyncResult) => 
-          total + (set.count || 0), 0);
-        
+      if (data.result.success) {
         toast.success(
-          `Synced ${totalCards} cards from ${data.result.sets.length} McDonald's sets in ${formatDuration(duration)}`
+          `Comprehensive sync completed: ${data.result.successfulSets}/${data.result.setCount} sets with ${data.result.totalCards} cards in ${formatDuration(duration)}`
         );
+        
+        if (data.result.failedSets && data.result.failedSets > 0) {
+          toast.warning(`${data.result.failedSets} sets failed to sync. See results for details.`);
+        }
       } else {
-        toast.success(`McDonald's sets have been synced in ${formatDuration(duration)}`);
+        toast.error(`Failed to complete comprehensive sync: ${data.result.error || "Unknown error"}`);
       }
     } catch (error) {
-      console.error("Error syncing McDonald's sets:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to sync McDonald's sets");
-    } finally {
-      setLoading(null);
-      completeProgressAnimation();
-    }
-  };
-
-  const handleSyncRecent = async () => {
-    setLoading('syncRecent');
-    setOperationStartTime(Date.now());
-    startProgressAnimation(); // Remove the assignment to progressInterval
-    
-    try {
-      toast.info("Starting sync for recent sets. This may take several minutes...");
-      
-      const response = await fetch('/api/admin/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'syncSpecificSets', type: 'recent' })
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to sync recent sets");
-      }
-      
-      setResults(data.result);
-      
-      // Calculate the duration
-      const duration = data.executionTimeMs || (Date.now() - (operationStartTime || Date.now()));
-      
-      if (data.result.sets && data.result.sets.length > 0) {
-        const totalCards = data.result.sets.reduce((total: number, set: SetSyncResult) => 
-          total + (set.count || 0), 0);
-        
-        toast.success(
-          `Synced ${totalCards} cards from ${data.result.sets.length} recent sets in ${formatDuration(duration)}`
-        );
-      } else {
-        toast.success(`Recent sets have been synced in ${formatDuration(duration)}`);
-      }
-    } catch (error) {
-      console.error("Error syncing recent sets:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to sync recent sets");
+      console.error("Error in comprehensive sync:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to sync sets and cards");
     } finally {
       setLoading(null);
       completeProgressAnimation();
@@ -337,7 +257,7 @@ export default function AdminDashboard() {
   const handleUpdatePrices = async () => {
     setLoading('updatePrices');
     setOperationStartTime(Date.now());
-    startProgressAnimation(); // Remove the assignment to progressInterval
+    startProgressAnimation();
     
     try {
       toast.info("Starting price update. This may take several minutes...");
@@ -374,7 +294,7 @@ export default function AdminDashboard() {
   const handleCheckNewSets = async () => {
     setLoading('checkNewSets');
     setOperationStartTime(Date.now());
-    startProgressAnimation(); // Remove the assignment to progressInterval
+    startProgressAnimation();
     
     try {
       toast.info("Checking for new sets...");
@@ -476,84 +396,6 @@ export default function AdminDashboard() {
     void fetchUsers();
   };
 
-  // Handler for set selection dropdown
-  const handleSetSelection = (value: string) => {
-    setSelectedSet(value);
-    setSetId(''); // Clear the manual input when using dropdown
-  };
-
-  // Handler for batch set selection
-  const handleBatchSetSelection = (setId: string) => {
-    setSelectedSets((prev) => {
-      if (prev.includes(setId)) {
-        return prev.filter(id => id !== setId);
-      } else {
-        return [...prev, setId];
-      }
-    });
-  };
-
-  // Handler for syncing batch of sets
-  const handleSyncBatch = async () => {
-    if (selectedSets.length === 0) {
-      toast.error('Select at least one set to sync');
-      return;
-    }
-    
-    setLoading('syncBatch');
-    setOperationStartTime(Date.now());
-    startProgressAnimation(); // Remove the assignment to progressInterval
-    
-    try {
-      toast.info(`Starting sync for ${selectedSets.length} sets. This may take a while...`);
-      
-      const response = await fetch('/api/admin/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'syncBatch', 
-          setIds: selectedSets 
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to sync batch sets');
-      }
-      
-      setResults(data.result);
-      
-      // Calculate the duration
-      const duration = data.executionTimeMs || (Date.now() - (operationStartTime || Date.now()));
-      
-      if (data.result.results && Array.isArray(data.result.results)) {
-        const successfulSets = data.result.results.filter((r: SetSyncResult) => r.success);
-        const totalCards = successfulSets.reduce((sum: number, set: SetSyncResult) => sum + (set.count || 0), 0);
-        
-        toast.success(
-          `Synced ${successfulSets.length}/${selectedSets.length} sets with ${totalCards} cards in ${formatDuration(duration)}`
-        );
-        
-        const failedSets = data.result.results.filter((r: SetSyncResult) => !r.success);
-        if (failedSets.length > 0) {
-          toast.warning(`${failedSets.length} sets failed to sync. See results for details.`);
-        }
-      } else {
-        toast.success(`Batch sync completed in ${formatDuration(duration)}`);
-      }
-      
-      // Clear selected sets
-      setSelectedSets([]);
-    } catch (error) {
-      console.error('Error syncing batch sets:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to sync batch sets');
-    } finally {
-      setLoading(null);
-      completeProgressAnimation();
-    }
-  };
-
   // Cleanup interval on unmount
   React.useEffect(() => {
     return () => {
@@ -593,7 +435,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle>Sync All Sets</CardTitle>
+                <CardTitle>Sync Sets</CardTitle>
                 <CardDescription>
                   Sync all sets from the Pokémon TCG API to your database
                 </CardDescription>
@@ -650,37 +492,18 @@ export default function AdminDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Select a Set</Label>
-                    <Select onValueChange={handleSetSelection} value={selectedSet}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a set" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {popularSets.map(set => (
-                          <SelectItem key={set.id} value={set.id}>
-                            {set.name} ({set.id})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="setId">Or enter Set ID manually</Label>
+                    <Label htmlFor="setId">Enter Set ID</Label>
                     <Input 
                       id="setId" 
                       value={setId}
-                      onChange={(e) => {
-                        setSetId(e.target.value);
-                        if (e.target.value) setSelectedSet(''); // Clear dropdown when using manual input
-                      }}
+                      onChange={(e) => setSetId(e.target.value)}
                       placeholder="e.g., sv4"
                     />
                   </div>
                   
                   <Button 
                     onClick={handleSyncSetCards} 
-                    disabled={loading !== null || (!setId && !selectedSet)}
+                    disabled={loading !== null || !setId}
                     className="w-full"
                   >
                     {loading === 'syncSetCards' ? (
@@ -701,53 +524,30 @@ export default function AdminDashboard() {
             
             <Card>
               <CardHeader>
-                <CardTitle>Special Operations</CardTitle>
+                <CardTitle>Comprehensive Sync</CardTitle>
                 <CardDescription>
-                  Special sync and maintenance operations
+                  Sync all sets and their cards in one operation
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* McDonald's Sets Button */}
                 <Button 
-                  onClick={handleSyncMcDonalds} 
+                  onClick={handleSyncSetsAndCards} 
                   disabled={loading !== null}
                   className="w-full"
-                  variant="outline"
                 >
-                  {loading === 'syncMcDonalds' ? (
+                  {loading === 'syncSetsAndCards' ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Syncing...
+                      Syncing All Sets & Cards...
                     </>
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Sync McDonald&apos;s Sets
+                      Sync All Sets & Cards
                     </>
                   )}
                 </Button>
                 
-                {/* Recent Sets Button */}
-                <Button 
-                  onClick={handleSyncRecent} 
-                  disabled={loading !== null}
-                  className="w-full"
-                  variant="outline"
-                >
-                  {loading === 'syncRecent' ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Syncing...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Sync Recent Sets
-                    </>
-                  )}
-                </Button>
-                
-                {/* Price Update Button */}
                 <Button 
                   onClick={handleUpdatePrices} 
                   disabled={loading !== null}
@@ -770,65 +570,6 @@ export default function AdminDashboard() {
             </Card>
           </div>
           
-          {/* Batch Sync Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Batch Sync</CardTitle>
-              <CardDescription>
-                Select multiple sets to sync in a batch
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                  {popularSets.map(set => (
-                    <div 
-                      key={set.id} 
-                      className={`border rounded-md p-2 cursor-pointer transition-colors ${
-                        selectedSets.includes(set.id) 
-                          ? 'border-primary bg-primary/10' 
-                          : 'border-muted hover:border-primary/30'
-                      }`}
-                      onClick={() => handleBatchSetSelection(set.id)}
-                    >
-                      <div className="flex items-start">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{set.name}</div>
-                          <div className="text-xs text-muted-foreground">{set.id}</div>
-                          {set.series && <div className="text-xs text-muted-foreground">{set.series}</div>}
-                        </div>
-                        <div className="ml-2">
-                          {selectedSets.includes(set.id) && (
-                            <Check className="h-4 w-4 text-primary" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button 
-                onClick={handleSyncBatch} 
-                disabled={loading !== null || selectedSets.length === 0}
-                className="w-full"
-              >
-                {loading === 'syncBatch' ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Syncing {selectedSets.length} sets...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Sync {selectedSets.length || 'Selected'} Sets
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
-          
           {/* Operation Progress */}
           {loading && (
             <Card>
@@ -838,11 +579,9 @@ export default function AdminDashboard() {
                     <span className="text-sm text-muted-foreground">
                       {loading === 'syncSets' && 'Syncing all sets...'}
                       {loading === 'syncSetCards' && 'Syncing set cards...'}
-                      {loading === 'syncMcDonalds' && "Syncing McDonald's sets..."}
-                      {loading === 'syncRecent' && "Syncing recent sets..."}
+                      {loading === 'syncSetsAndCards' && 'Syncing all sets and their cards...'}
                       {loading === 'updatePrices' && "Updating card prices..."}
                       {loading === 'checkNewSets' && "Checking for new sets..."}
-                      {loading === 'syncBatch' && `Syncing ${selectedSets.length} sets...`}
                     </span>
                     <Loader2 className="h-4 w-4 animate-spin" />
                   </div>
@@ -861,119 +600,147 @@ export default function AdminDashboard() {
           )}
           
           {/* Results */}
-{results && (
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle>Sync Results</CardTitle>
-      {results.success !== undefined && (
-        <Badge 
-          variant="outline" 
-          className={
-            results.success 
-              ? "bg-green-50 text-green-700 border-green-200" 
-              : "bg-red-50 text-red-700 border-red-200"
-          }
-        >
-          {results.success ? 'Success' : 'Failed'}
-        </Badge>
-      )}
-    </CardHeader>
-    <CardContent className="pt-4 space-y-4">
-      {/* Success Stats Summary */}
-      {results.success && (
-        <div className="space-y-4">
-          {results.count !== undefined && (
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Items processed:</span>
-              <span className="font-bold">{results.count}</span>
-            </div>
-          )}
-          
-          {results.total !== undefined && results.failed !== undefined && (
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Success rate:</span>
-              <span className="font-bold">
-                {results.total > 0 
-                  ? `${Math.round(((results.total - results.failed) / results.total) * 100)}%` 
-                  : 'N/A'}
-              </span>
-            </div>
-          )}
-          
-          {results.sets && results.sets.length > 0 && (
-            <>
-              <div className="font-medium">Processed sets:</div>
-              <div className="max-h-40 overflow-y-auto border rounded-md divide-y">
-                {results.sets.map((set, idx) => (
-                  <div key={idx} className="p-2 flex justify-between items-center">
-                    <div>
-                      <span className="font-medium">{set.id}</span>
-                      {set.name && (
-                        <span className="ml-2 text-sm text-muted-foreground">
-                          ({set.name})
-                        </span>
-                      )}
-                    </div>
-                    
-                    {set.error ? (
-                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Failed
-                      </Badge>
-                    ) : (
-                      <span className="font-medium">{set.count || 0} cards</span>
+          {results && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle>Sync Results</CardTitle>
+                {results.success !== undefined && (
+                  <Badge 
+                    variant="outline" 
+                    className={
+                      results.success 
+                        ? "bg-green-50 text-green-700 border-green-200" 
+                        : "bg-red-50 text-red-700 border-red-200"
+                    }
+                  >
+                    {results.success ? 'Success' : 'Failed'}
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                {/* Success Stats Summary */}
+                {results.success && (
+                  <div className="space-y-4">
+                    {results.count !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Items processed:</span>
+                        <span className="font-bold">{results.count}</span>
+                      </div>
                     )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          
-          {/* Failed Cards List */}
-          {Array.isArray(results.failedCardIds) && results.failedCardIds.length > 0 && (
-            <div className="space-y-2">
-              <div className="font-medium text-red-600">
-                Failed Cards ({results.failedCardIds.length})
-              </div>
-              <div className="max-h-40 overflow-y-auto p-2 border rounded-md bg-red-50 text-sm">
-                {results.failedCardIds.map((cardId, idx) => (
-                  <div key={idx} className="mb-1">
-                    {String(cardId)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-                      
-          {/* Error Details */}
-          {!results.success && results.error && (
-            <div className="p-4 border rounded-md bg-red-50 text-red-700 overflow-x-auto">
-              <div className="font-medium mb-2">Error:</div>
-              <div className="text-sm font-mono">
-                {typeof results.error === 'string'
-                  ? results.error
-                  : JSON.stringify(results.error, null, 2)}
-              </div>
-            </div>
-          )}
-                      
-          {/* Full Raw Results */}
-          <div className="space-y-2">
-            <details>
-              <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-                Show raw results
-              </summary>
-              <pre className="mt-2 bg-muted p-4 rounded-md overflow-auto max-h-96 text-xs">
-                {JSON.stringify(results, null, 2)}
-              </pre>
-            </details>
-          </div>
-        </div>
-      )}
-    </CardContent>
-  </Card>
-)}
+                    
+                    {results.total !== undefined && results.failed !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Success rate:</span>
+                        <span className="font-bold">
+                          {results.total > 0 
+                            ? `${Math.round(((results.total - results.failed) / results.total) * 100)}%` 
+                            : 'N/A'}
+                        </span>
+                      </div>
+                    )}
 
+                    {/* Comprehensive sync results */}
+                    {results.setCount !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Total sets:</span>
+                        <span className="font-bold">{results.setCount}</span>
+                      </div>
+                    )}
+
+                    {results.successfulSets !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Successful sets:</span>
+                        <span className="font-bold">{results.successfulSets}</span>
+                      </div>
+                    )}
+
+                    {results.failedSets !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Failed sets:</span>
+                        <span className="font-bold">{results.failedSets}</span>
+                      </div>
+                    )}
+
+                    {results.totalCards !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">Total cards synced:</span>
+                        <span className="font-bold">{results.totalCards}</span>
+                      </div>
+                    )}
+                    
+                    {results.sets && results.sets.length > 0 && (
+                      <>
+                        <div className="font-medium">Processed sets:</div>
+                        <div className="max-h-60 overflow-y-auto border rounded-md divide-y">
+                          {results.sets.map((set, idx) => (
+                            <div key={idx} className="p-2 flex justify-between items-center">
+                              <div>
+                                <span className="font-medium">{set.id}</span>
+                                {set.name && (
+                                  <span className="ml-2 text-sm text-muted-foreground">
+                                    ({set.name})
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {set.error || !set.success ? (
+                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
+                                  Failed
+                                </Badge>
+                              ) : (
+                                <span className="font-medium">{set.count || 0} cards</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    
+                    {/* Failed Cards List */}
+                    {Array.isArray(results.failedCardIds) && results.failedCardIds.length > 0 && (
+                      <div className="space-y-2">
+                        <div className="font-medium text-red-600">
+                          Failed Cards ({results.failedCardIds.length})
+                        </div>
+                        <div className="max-h-40 overflow-y-auto p-2 border rounded-md bg-red-50 text-sm">
+                          {results.failedCardIds.map((cardId, idx) => (
+                            <div key={idx} className="mb-1">
+                              {String(cardId)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Error Details */}
+                    {!results.success && results.error && (
+                      <div className="p-4 border rounded-md bg-red-50 text-red-700 overflow-x-auto">
+                        <div className="font-medium mb-2">Error:</div>
+                        <div className="text-sm font-mono">
+                          {typeof results.error === 'string'
+                            ? results.error
+                            : JSON.stringify(results.error, null, 2)}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Full Raw Results */}
+                    <div className="space-y-2">
+                      <details>
+                        <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                          Show raw results
+                        </summary>
+                        <pre className="mt-2 bg-muted p-4 rounded-md overflow-auto max-h-96 text-xs">
+                          {JSON.stringify(results, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
         
         {/* User Management Tab */}

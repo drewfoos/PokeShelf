@@ -87,7 +87,6 @@ const NavLinks = ({ isMobile = false }: { isMobile?: boolean }) => {
   const links = [
     { href: "/sets", label: "Sets" },
     { href: "/collection", label: "My Collection", requireAuth: true },
-    { href: "/wishlist", label: "Wishlist", requireAuth: true },
   ];
 
   return (

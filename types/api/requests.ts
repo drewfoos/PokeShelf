@@ -53,6 +53,7 @@ export interface AdminSyncRequest {
   setId?: string;
   type?: string;
   setIds?: string[];
+  updateAll?: boolean;
 }
 
 /**
