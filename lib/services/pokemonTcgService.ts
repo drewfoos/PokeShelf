@@ -444,6 +444,8 @@ export class PokemonTcgService {
   async syncBatchSets(setIds: string[]): Promise<{
     success: boolean;
     results: SetSyncResult[];
+    successCount?: number;
+    failCount?: number;
   }> {
     const results: SetSyncResult[] = [];
     let successCount = 0;
@@ -494,7 +496,9 @@ export class PokemonTcgService {
     
     return {
       success: failCount === 0,
-      results
+      results,
+      successCount,
+      failCount
     };
   }
 
