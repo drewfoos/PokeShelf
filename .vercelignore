@@ -1,0 +1,35 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*
+
+# Dependencies
+node_modules/
+
+# Build artifacts and cache
+.next/
+build/
+dist/
+out/
+.cache/
+
+# Development tools and configs
+.git/
+.github/
+.vscode/
+.idea/
+*.log
+
+# Testing
+coverage/
+__tests__/
+test/
+tests/
+jest.config.js
+
+# Documentation
+README.md
+docs/
+
+# Scripts
+/scripts

@@ -3,7 +3,6 @@ import prisma from '../prisma';
 import { 
   Card, 
   PriceHistoryRecord, 
-  TCGPlayerData,
   SetSyncResult,
   prepareJsonForPrisma
 } from '@/types';
@@ -42,6 +41,20 @@ export class PokemonTcgService {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Get the direct TCGPlayer URL for a card
+   */
+  private async getDirectTCGPlayerUrl(cardId: string): Promise<string> {
+    const apiUrl = `https://prices.pokemontcg.io/tcgplayer/${cardId}`;
+    try {
+      const response = await fetch(apiUrl, { redirect: 'follow' });
+      return response.url;
+    } catch (error) {
+      console.error("Failed to resolve direct URL:", error);
+      return `https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(cardId)}`;
+    }
   }
 
   /**
@@ -236,7 +249,37 @@ export class PokemonTcgService {
                   await this.sleep(200);
                 }
 
-                const tcgPlayerData = cardData.tcgplayer as TCGPlayerData;
+                // Get the original tcgPlayerData
+                let tcgPlayerData = cardData.tcgplayer;
+                
+                // If we don't have a URL already, fetch it
+                if (!tcgPlayerData?.url) {
+                  try {
+                    // Get direct URL
+                    const directUrl = await this.getDirectTCGPlayerUrl(cardData.id);
+                    
+                    // Create tcgPlayerData if it doesn't exist
+                    if (!tcgPlayerData) {
+                      tcgPlayerData = {
+                        url: directUrl,
+                        updatedAt: new Date().toISOString(),
+                        prices: {}
+                      };
+                    } else {
+                      // Update existing tcgPlayerData with the URL
+                      tcgPlayerData = {
+                        ...tcgPlayerData,
+                        url: directUrl
+                      };
+                    }
+                    
+                    // Small delay to avoid rate limits on the TCGPlayer API
+                    await this.sleep(300);
+                  } catch (urlError) {
+                    console.warn(`Warning: Could not get TCGPlayer URL for ${cardData.id}: ${urlError}`);
+                    // Continue anyway - the card will be synced without the URL
+                  }
+                }
 
                 // Cast to our defined interface
                 const cardWithSet = cardData as unknown as CardWithSet;
@@ -257,7 +300,7 @@ export class PokemonTcgService {
                     rarity: cardData.rarity || 'Unknown',
                     nationalPokedexNumbers: cardData.nationalPokedexNumbers || [],
                     images: prepareJsonForPrisma(cardData.images),
-                    tcgplayer: prepareJsonForPrisma(tcgPlayerData),
+                    tcgplayer: prepareJsonForPrisma(tcgPlayerData || {}), // Use empty object if tcgPlayerData is undefined
                     lastUpdated: new Date(),
                   },
                   create: {
@@ -274,7 +317,7 @@ export class PokemonTcgService {
                     rarity: cardData.rarity || 'Unknown',
                     nationalPokedexNumbers: cardData.nationalPokedexNumbers || [],
                     images: prepareJsonForPrisma(cardData.images),
-                    tcgplayer: prepareJsonForPrisma(tcgPlayerData),
+                    tcgplayer: prepareJsonForPrisma(tcgPlayerData || {}), // Use empty object if tcgPlayerData is undefined
                     lastUpdated: new Date(),
                   },
                 });
@@ -386,25 +429,60 @@ export class PokemonTcgService {
           
           // Match with cards in collection and update prices
           for (const card of cards) {
-            if (setCardIds.includes(card.id) && card.tcgplayer?.prices) {
+            if (setCardIds.includes(card.id)) {
               try {
-                // Create price history record
-                const priceData: PriceHistoryRecord = {
-                  cardId: card.id,
-                  date: new Date(),
-                  normal: card.tcgplayer.prices.normal?.market || null,
-                  holofoil: card.tcgplayer.prices.holofoil?.market || null,
-                  reverseHolofoil: card.tcgplayer.prices.reverseHolofoil?.market || null,
-                  firstEdition: card.tcgplayer.prices['1stEditionHolofoil']?.market || null,
-                };
+                // Get the original tcgPlayerData
+                let tcgPlayerData = card.tcgplayer;
                 
-                await prisma.priceHistory.create({ data: priceData });
+                // If we don't have a URL already, fetch it
+                if (!tcgPlayerData?.url) {
+                  try {
+                    // Get direct URL
+                    const directUrl = await this.getDirectTCGPlayerUrl(card.id);
+                    
+                    // Create tcgPlayerData if it doesn't exist
+                    if (!tcgPlayerData) {
+                      tcgPlayerData = {
+                        url: directUrl,
+                        updatedAt: new Date().toISOString(),
+                        prices: {}
+                      };
+                    } else {
+                      // Update existing tcgPlayerData with the URL
+                      tcgPlayerData = {
+                        ...tcgPlayerData,
+                        url: directUrl
+                      };
+                    }
+                    
+                    // Small delay to avoid rate limits on the TCGPlayer API
+                    await this.sleep(300);
+                  } catch (urlError) {
+                    console.warn(`Warning: Could not get TCGPlayer URL for ${card.id}: ${urlError}`);
+                    // Continue anyway - the card will be updated without the URL
+                  }
+                }
                 
-                // Update card with latest price data
+                // Only create price history if tcgplayer pricing data is available
+                if (tcgPlayerData?.prices) {
+                  // Create price history record
+                  const priceData: PriceHistoryRecord = {
+                    cardId: card.id,
+                    date: new Date(),
+                    normal: tcgPlayerData.prices.normal?.market || null,
+                    holofoil: tcgPlayerData.prices.holofoil?.market || null,
+                    reverseHolofoil: tcgPlayerData.prices.reverseHolofoil?.market || null,
+                    firstEdition: tcgPlayerData.prices['1stEditionHolofoil']?.market || null,
+                  };
+                  
+                  await prisma.priceHistory.create({ data: priceData });
+                }
+                
+                // Update card with latest price data (even if tcgplayer is undefined)
                 await prisma.card.update({
                   where: { id: card.id },
                   data: {
-                    tcgplayer: prepareJsonForPrisma(card.tcgplayer),
+                    tcgplayer: prepareJsonForPrisma(tcgPlayerData || {}),
                     lastUpdated: new Date(),
                   },
                 });

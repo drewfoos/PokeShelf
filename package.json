@@ -7,9 +7,11 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "import-data": "npx ts-node --project tsconfig.json scripts/import-data.ts",
     "clear-db": "ts-node --project tsconfig.json scripts/clear-database.ts",
-    "check-new-sets": "npx ts-node --project tsconfig.json scripts/check-new-sets.ts"
+    "sync:all": "ts-node scripts/sync-all-sets-and-cards.ts",
+    "sync:sets": "ts-node -e \"require('./lib/services/pokemonTcgService').pokemonTcgService.syncSets().then(console.log)\"",
+    "sync:check-new": "ts-node -e \"require('./lib/services/pokemonTcgService').pokemonTcgService.syncNewSets().then(console.log)\"",
+    "sync:tcgplayer-urls": "ts-node scripts/update-tcgplayer-urls.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.12.0",

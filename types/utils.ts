@@ -54,9 +54,12 @@ export function getSetImages(json: Prisma.JsonValue | null | undefined): SetImag
  * @param data Object to prepare
  * @returns JSON-safe object
  */
-export function prepareJsonForPrisma<T>(data: T): Prisma.InputJsonValue {
-  return JSON.parse(JSON.stringify(data)) as Prisma.InputJsonValue;
-}
+export function prepareJsonForPrisma<T>(data: T | null | undefined): Prisma.InputJsonValue {
+    if (data === undefined || data === null) {
+      return {}; // Return empty object instead of trying to parse undefined
+    }
+    return JSON.parse(JSON.stringify(data)) as Prisma.InputJsonValue;
+  }
 
 /**
  * Convert a MongoDB document to our Card interface

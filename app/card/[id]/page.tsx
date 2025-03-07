@@ -66,21 +66,6 @@ async function getSet(id: string): Promise<Set | null> {
   }
 }
 
-/**
- * Fetches the API URL (which will redirect) and returns the final TCGPlayer URL.
- * This function runs on the server so it can use Node's fetch.
- */
-async function getDirectTCGPlayerUrl(cardId: string): Promise<string> {
-  const apiUrl = `https://prices.pokemontcg.io/tcgplayer/${cardId}`;
-  try {
-    const response = await fetch(apiUrl, { redirect: 'follow' });
-    return response.url;
-  } catch (error) {
-    console.error("Failed to resolve direct URL:", error);
-    return `https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(cardId)}`;
-  }
-}
-
 export default async function CardDetailPage({
   params,
 }: {
@@ -108,8 +93,10 @@ export default async function CardDetailPage({
   const largeImage = card.images?.large || null;
   const smallImage = card.images?.small || null;
 
-  // Get the direct TCGPlayer URL from the prices API server-side
-  const tcgplayerDirectUrl = await getDirectTCGPlayerUrl(card.id);
+  // Get the TCGPlayer URL directly from the card data
+  // Fall back to a search URL if not available
+  const tcgplayerDirectUrl = card.tcgplayer?.url || 
+    `https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(card.id)}`;
 
   // Get prices from the card's tcgplayer data
   const tcgplayer = card.tcgplayer || null;
