@@ -11,6 +11,16 @@ import {
 import type { Set as PokemonSet } from '@/types';
 
 /**
+ * Type for card with set information
+ */
+interface CardWithSet extends Card {
+  set: {
+    id: string;
+    name: string;
+  };
+}
+
+/**
  * Simplified service for interacting with the Pokémon TCG API
  * Focused on admin functionality for syncing cards and prices
  */
@@ -191,7 +201,6 @@ export class PokemonTcgService {
       let page = 1;
       const pageSize = 50;
       let hasMoreCards = true;
-      let totalCards = 0;
       let successCount = 0;
       const failedCards: string[] = [];
 
@@ -229,8 +238,8 @@ export class PokemonTcgService {
 
                 const tcgPlayerData = cardData.tcgplayer as TCGPlayerData;
 
-                // Cast to any to handle the set property which might not be in our Card type
-                const cardWithSet = cardData as any;
+                // Cast to our defined interface
+                const cardWithSet = cardData as unknown as CardWithSet;
                 
                 // Upsert the card
                 await prisma.card.upsert({
@@ -298,8 +307,6 @@ export class PokemonTcgService {
               }
             }
           }
-
-          totalCards += cards.length;
           
           // Check if we have more pages
           if (cards.length < pageSize) {
@@ -615,7 +622,7 @@ export class PokemonTcgService {
       const results = [];
       let successCount = 0;
       let failCount = 0;
-      let totalCards = 0;
+      let totalCardsCount = 0;
       
       // Process each set (newest first)
       for (let i = 0; i < sets.length; i++) {
@@ -629,7 +636,7 @@ export class PokemonTcgService {
           
           if (setResult.success) {
             successCount++;
-            totalCards += (setResult.count || 0);
+            totalCardsCount += (setResult.count || 0);
             results.push({
               id: set.id,
               name: set.name,
@@ -664,7 +671,7 @@ export class PokemonTcgService {
         setCount: sets.length,
         successfulSets: successCount,
         failedSets: failCount,
-        totalCards,
+        totalCards: totalCardsCount,
         phase: "complete",
         progress: 100,
         sets: results

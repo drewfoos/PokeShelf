@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import { pokemonTcgService } from '@/lib/services/pokemonTcgService';
-import { AdminSyncRequest, SyncResponse, SetSyncResult } from '@/types';
+import { AdminSyncRequest, SyncResponse } from '@/types';
 import prisma from '@/lib/prisma';
 
 /**
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     // Parse the request body with proper typing
     const body: AdminSyncRequest = await request.json();
-    const { action, setId, type, setIds } = body;
+    const { action, setId } = body;
 
     if (!action) {
       return NextResponse.json(
