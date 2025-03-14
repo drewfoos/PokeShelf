@@ -7,6 +7,8 @@ Disallow: /wp-admin/
 Disallow: /wp-content/
 Disallow: /wp-includes/
 Disallow: /wordpress/
+Disallow: /card/
+
 Allow: /
 
 # Prevent images from being crawled to reduce load on image servers
