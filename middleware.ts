@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Define public routes for your application
+// Define public routes - everything else will be protected
 const isPublicRoute = createRouteMatcher([
   "/",
   "/search(.*)",
@@ -18,9 +18,10 @@ const isPublicRoute = createRouteMatcher([
   "/terms(.*)",
   "/robots.txt",
   "/humans.txt",
-  "/sitemap(.*)\\.xml"
+  "/sitemap(?:-\\d+)?\\.xml"
 ]);
 
+// Common bot probe paths that should return 404 immediately
 const BOT_PROBE_PATTERNS = [
   /^\/(wp|wordpress|wp-admin|wp-content|wp-includes)/i,
   /^\/admin\/(Cms_Wysiwyg|downloader|login)/i,
@@ -39,31 +40,37 @@ const BOT_PROBE_PATTERNS = [
   /^\/\.git\//i,
 ];
 
+// Custom middleware that runs before Clerk's middleware
 export default clerkMiddleware(async (auth, request) => {
   const { pathname } = new URL(request.url);
-
-  // Explicitly bypass middleware for any sitemap URL.
-  if (pathname.startsWith("/sitemap")) {
-    return NextResponse.next();
+  
+  // Check if path matches any known bot probe pattern
+  if (BOT_PROBE_PATTERNS.some(pattern => pattern.test(pathname))) {
+    // Return 404 for bot probes
+    return NextResponse.json(
+      { error: 'Not Found' },
+      { status: 404 }
+    );
   }
-
-  // Check if the pathname matches any bot probe patterns.
-  if (BOT_PROBE_PATTERNS.some((pattern) => pattern.test(pathname))) {
-    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
-  }
-
-  // Protect routes that are not public.
+  
+  // If the route is not public, protect it
   if (!isPublicRoute(request)) {
     await auth.protect();
   }
-
-  return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    // Exclude static assets and sitemap routes.
-    "/((?!_next/static|_next/image|favicon.ico|sitemap(?:.*)\\.xml|.*\\.(?:jpg|jpeg|gif|png|svg|ico|webp|js|css)).*)",
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     * - public files with extensions (.jpg, .jpeg, etc)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:jpg|jpeg|gif|png|svg|ico|webp|js|css)).*)",
+    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };
