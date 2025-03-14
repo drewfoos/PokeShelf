@@ -17,7 +17,8 @@ const isPublicRoute = createRouteMatcher([
   "/privacy(.*)",
   "/terms(.*)",
   "/robots.txt",
-  "/humans.txt"
+  "/humans.txt",
+  "/sitemap.xml"
 ]);
 
 // Common bot probe paths that should return 404 immediately
