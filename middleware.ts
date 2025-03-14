@@ -61,8 +61,8 @@ export default clerkMiddleware(async (auth, request) => {
 
 export const config = {
   matcher: [
-    // Exclude static assets AND any sitemap XML file (like /sitemap.xml, /sitemap-0.xml, etc.)
-    "/((?!_next/static|_next/image|favicon.ico|sitemap(.*)\\.xml|.*\\.(?:jpg|jpeg|gif|png|svg|ico|webp|js|css)).*)",
+    // Exclude static assets AND any sitemap XML file (e.g. /sitemap.xml, /sitemap-0.xml, etc.)
+    "/((?!_next/static|_next/image|favicon.ico|sitemap(?:.*)\\.xml|.*\\.(?:jpg|jpeg|gif|png|svg|ico|webp|js|css)).*)",
     // Always run for API routes
     "/(api|trpc)(.*)",
   ],
