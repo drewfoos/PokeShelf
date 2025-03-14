@@ -1,7 +1,10 @@
-import type { NextConfig } from "next";
+// next.config.ts
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Images: bypass built-in optimization if you’re handling images externally.
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -9,12 +12,39 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-    minimumCacheTTL: 31536000, // Cache for 1 year (in seconds)
-    formats: ['image/webp'], // Prefer WebP format for better compression
-    deviceSizes: [640, 750, 1080, 1200, 1920], // Limit to essential sizes
-    imageSizes: [16, 32, 64, 128, 256], // Limit image sizes
-    // quality: 75, // Optional: adjust quality for all images
   },
+
+  // Caching: set long cache times for all routes and specifically for Next.js image requests.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/_next/image',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
+
+  // Experimental features for performance improvements.
+  experimental: {
+    optimizeCss: true, // Inline critical CSS for faster first paint.
+  },
+
+  // Enable React Strict Mode for catching potential issues early.
+  reactStrictMode: true,
 };
 
 export default nextConfig;

@@ -9,4 +9,11 @@ Disallow: /wp-includes/
 Disallow: /wordpress/
 Allow: /
 
-Sitemap: https://your-site.com/sitemap.xml
+# Prevent images from being crawled to reduce load on image servers
+Disallow: *.png$
+Disallow: *.jpg$
+Disallow: *.jpeg$
+Disallow: *.gif$
+Disallow: *.webp$
+
+Sitemap: https://pokeshelf.com/sitemap.xml
