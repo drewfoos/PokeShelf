@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "postbuild": "next-sitemap",
     "start": "next start",
     "lint": "next lint",
     "clear-db": "ts-node --project tsconfig.json scripts/clear-database.ts",
@@ -42,7 +41,6 @@
     "framer-motion": "^12.4.10",
     "lucide-react": "^0.476.0",
     "next": "15.1.7",
-    "next-sitemap": "^4.2.3",
     "next-themes": "^0.4.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
