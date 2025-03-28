@@ -6,10 +6,9 @@ import { ChevronLeft } from 'lucide-react'
 import prisma from '@/lib/prisma'
 import CardGrid from '@/components/cards/cards-grid'
 import { FilterControls } from './filter-controls'
-import SetPagination from '@/components/sets/set-pagination'
 import { Prisma } from '@prisma/client'
 // Import standardized types
-import { Card, Pagination, mapMongoCardToInterface, mapMongoSetToInterface } from '@/types'
+import { Card, mapMongoCardToInterface, mapMongoSetToInterface } from '@/types'
 import type { Set as PokemonSet } from '@/types'
 
 export const revalidate = 604800;
@@ -28,15 +27,12 @@ async function getSet(id: string): Promise<PokemonSet | null> {
 }
 
 
-// Fetch Cards in a Set with pagination and filtering
+// Fetch ALL Cards in a Set with filtering (no pagination)
 async function getSetCards(
   setId: string,
-  page = 1,
   filters: { rarity?: string; type?: string } = {}
 ) {
   try {
-    const pageSize = 20 // Number of cards per page
-
     // Build filter using Prisma's CardWhereInput
     const filter: Prisma.CardWhereInput = { setId }
 
@@ -49,7 +45,6 @@ async function getSetCards(
     }
 
     // Get ALL cards for this set that match the filters (without pagination)
-    // so we can sort them properly before pagination
     const [allCardDocs, totalCount] = await Promise.all([
       prisma.card.findMany({
         where: filter,
@@ -64,11 +59,6 @@ async function getSetCards(
     allCards.sort((a, b) => {
       return a.number.localeCompare(b.number, undefined, { numeric: true, sensitivity: 'base' });
     });
-    
-    // Apply pagination AFTER sorting
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const cards = allCards.slice(startIndex, endIndex);
 
     // Get unique rarities for dropdown
     const rarities = await prisma.card.findMany({
@@ -87,18 +77,10 @@ async function getSetCards(
     typesArray.forEach((card) => {
       card.types?.forEach((type) => uniqueTypes.add(type))
     })
-    
-    // Create properly typed pagination object
-    const pagination: Pagination = {
-      page,
-      pageSize,
-      totalCount,
-      totalPages: Math.ceil(totalCount / pageSize),
-    };
 
     return {
-      cards,
-      pagination,
+      cards: allCards,
+      totalCount,
       filters: {
         rarities: rarities
           .map((r) => r.rarity)
@@ -111,12 +93,7 @@ async function getSetCards(
     console.error(`Error fetching cards for set ${setId}:`, error)
     return {
       cards: [],
-      pagination: {
-        page: 1,
-        pageSize: 20,
-        totalCount: 0,
-        totalPages: 0,
-      } as Pagination,
+      totalCount: 0,
       filters: {
         rarities: [],
         types: [],
@@ -127,7 +104,6 @@ async function getSetCards(
 
 type SetParams = { id: string }
 type SetSearchParams = {
-  page?: string
   rarity?: string
   type?: string
 }
@@ -142,23 +118,22 @@ export default async function SetDetailPage({
 }) {
   // Await them *before* destructuring
   const { id: setId } = await params
-  const { page: pageParam, rarity: rarityParam, type: typeParam } = await searchParams
+  const { rarity: rarityParam, type: typeParam } = await searchParams
 
-  const page = pageParam ? parseInt(pageParam) : 1
   const rarity = rarityParam ?? 'all'
   const type = typeParam ?? 'all'
 
   // Fetch the set and its cards concurrently
   const [set, cardsData] = await Promise.all([
     getSet(setId),
-    getSetCards(setId, page, { rarity, type }),
+    getSetCards(setId, { rarity, type }),
   ])
 
   if (!set) {
     notFound()
   }
 
-  const { cards, pagination, filters } = cardsData
+  const { cards, totalCount, filters } = cardsData
 
   // Get logo/symbol using our strongly typed interface
   const logo = set.images?.logo || null
@@ -249,7 +224,12 @@ export default async function SetDetailPage({
 
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h2 className="text-2xl font-bold">Cards in this set</h2>
+          <div>
+            <h2 className="text-2xl font-bold">Cards in this set</h2>
+            <p className="text-muted-foreground">
+              {totalCount} cards {(rarity !== 'all' || type !== 'all') ? '(filtered)' : ''}
+            </p>
+          </div>
 
           {/* Filters - a client component for interactivity */}
           <FilterControls
@@ -261,21 +241,8 @@ export default async function SetDetailPage({
           />
         </div>
 
-        {/* Render the card grid */}
+        {/* Render the card grid with all cards */}
         <CardGrid cards={cards} />
-
-        {/* Enhanced Pagination Controls - fixed for Server Components */}
-        {pagination.totalPages > 1 && (
-          <SetPagination
-            currentPage={pagination.page}
-            totalPages={pagination.totalPages}
-            baseUrl={`/sets/${setId}`}
-            itemCount={pagination.totalCount}
-            pageSize={pagination.pageSize}
-            rarity={rarity}
-            type={type}
-          />
-        )}
       </div>
     </div>
   )

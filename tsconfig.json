@@ -22,7 +22,7 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "lib/services/pokemonTcgService.js", "scripts/run-import.js", "next-sitemap.config.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "lib/services/pokemonTcgService.js", "scripts/run-import.js", "next-sitemap.config.ts"],
   "exclude": ["node_modules"],
   "ts-node": {
     "compilerOptions": {

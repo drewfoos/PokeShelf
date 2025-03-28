@@ -21,7 +21,7 @@ export const useToast = () => React.useContext(ToastContext);
 
 import React from 'react';
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children }: { children: React.ReactNode }) {""
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const addToast = (props: Omit<Toast, 'id'>) => {

@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import CardItem from '@/components/cards/card-item';
@@ -23,14 +22,14 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { isLoaded, isSignedIn } = useAuth();
-  
+ 
   // Find the selected card in the cards array
   const selectedCard = selectedCardId ? cards.find(card => card.id === selectedCardId) : null;
 
   // Handle adding a variant
   const handleAddVariant = (cardId: string) => {
     setSelectedCardId(cardId);
-    
+   
     // Only open the dialog if the user is signed in
     if (isLoaded && isSignedIn) {
       setIsDialogOpen(true);
@@ -48,8 +47,8 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {Array.from({ length: 12 }).map((_, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className="aspect-[3/4] rounded-lg bg-muted animate-pulse"
           />
         ))}
@@ -79,13 +78,13 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
   // Use the largest cards-per-row value to calculate needed placeholders
   const maxCardsPerRow = cardsPerRow.xl;
   const remainder = cards.length % maxCardsPerRow;
-  
+ 
   // Create placeholders array if needed
-  const placeholders: Placeholder[] = remainder === 0 
-    ? [] 
-    : Array.from({ length: maxCardsPerRow - remainder }).map((_, i) => ({ 
-        id: `placeholder-${i}`, 
-        isPlaceholder: true 
+  const placeholders: Placeholder[] = remainder === 0
+    ? []
+    : Array.from({ length: maxCardsPerRow - remainder }).map((_, i) => ({
+        id: `placeholder-${i}`,
+        isPlaceholder: true
       }));
 
   return (
@@ -94,7 +93,7 @@ const CardGrid: React.FC<CardGridProps> = ({ cards, isLoading = false }) => {
         {cards.map((card) => (
           <CardItem key={card.id} card={card} onAddVariant={handleAddVariant} />
         ))}
-        
+       
         {/* Invisible placeholders to maintain grid alignment */}
         {placeholders.map((placeholder: Placeholder) => (
           <div key={placeholder.id} className="invisible" aria-hidden="true">

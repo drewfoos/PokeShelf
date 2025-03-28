@@ -15,10 +15,10 @@ interface CardItemProps {
 
 const CardItem: React.FC<CardItemProps> = ({ card, onAddVariant }) => {
   const { id, name, images, artist, number } = card;
-  
+ 
   // Extract image URLs - images is now properly typed as CardImage
   const smallImage = images?.small || null;
-  
+ 
   // Handle add variant click without navigating to card detail page
   const handleAddClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -27,7 +27,7 @@ const CardItem: React.FC<CardItemProps> = ({ card, onAddVariant }) => {
       onAddVariant(id);
     }
   };
-  
+ 
   return (
     <Link href={`/card/${id}`} passHref>
       <div className="relative aspect-[3/4] overflow-hidden rounded-lg transition-all duration-300 group hover:shadow-md border border-muted bg-card">
@@ -44,6 +44,8 @@ const CardItem: React.FC<CardItemProps> = ({ card, onAddVariant }) => {
                 priority={false}
                 quality={75}
                 loading="lazy"
+                placeholder="blur"
+                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjI0IiBoZWlnaHQ9IjMxMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjJmMmYyIi8+PC9zdmc+"
               />
             </div>
           ) : (
@@ -52,14 +54,14 @@ const CardItem: React.FC<CardItemProps> = ({ card, onAddVariant }) => {
             </div>
           )}
         </div>
-        
+       
         {/* Card shimmer effect on hover */}
         <div className="absolute -inset-x-full -top-2 bottom-0 h-full transform-gpu bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:translate-x-full duration-1000 transition-transform"></div>
-        
+       
         {/* Add Variants Button (top right corner) */}
         <div className="absolute top-2 right-2 z-10">
-          <AuthenticatedCollectionAction 
-            size="sm" 
+          <AuthenticatedCollectionAction
+            size="sm"
             isIconOnly={true}
             onClick={handleAddClick}
           >
@@ -74,7 +76,7 @@ const CardItem: React.FC<CardItemProps> = ({ card, onAddVariant }) => {
             </Button>
           </AuthenticatedCollectionAction>
         </div>
-        
+       
         {/* Semi-transparent name bar at the bottom with number on the right */}
         <div className="absolute bottom-0 inset-x-0 bg-black/70 backdrop-blur-sm px-2 py-1.5">
           <div className="flex justify-between items-baseline">
@@ -88,7 +90,7 @@ const CardItem: React.FC<CardItemProps> = ({ card, onAddVariant }) => {
               #{number}
             </span>
           </div>
-          
+         
           {artist && (
             <div
               className="text-xs text-white/70 italic truncate"
